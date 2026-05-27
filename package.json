@@ -4,7 +4,6 @@
   "description": "Backend engine for AI Job Hunter Agent",
   "main": "dist/server.js",
   "scripts": {
-    "postinstall": "npx prisma generate",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "npx prisma generate && npx tsc",
     "start": "node dist/server.js",
