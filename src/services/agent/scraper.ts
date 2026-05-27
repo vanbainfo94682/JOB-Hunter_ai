@@ -1,5 +1,6 @@
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { playwrightQueue } from '../../utils/playwrightQueue';
 import { supabase, logSystem, isMncCompany, prisma } from '../../db';
 import { calculateJobMatch, computeLocalJobMatchHeuristics } from './matcher';
 import { execFile } from 'child_process';
@@ -454,95 +455,95 @@ export async function scrapeWeWorkRemotely(): Promise<RawScrapedJob[]> {
  * userId is used for per-user proxy/cookie settings.
  */
 export async function crawlStealthJobLink(url: string, userId?: string): Promise<RawScrapedJob | null> {
-  await logSystem('INFO', `Navigating stealth crawler to: ${url}`);
-  let browser;
-  try {
-    const settings = userId
-      ? await prisma.agentSettings.findFirst({ where: { userId } })
-      : await prisma.agentSettings.findFirst();
-    const launchOptions: any = {
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    };
+  return playwrightQueue.enqueue(async () => {
+    await logSystem('INFO', `Navigating stealth crawler to: ${url}`);
+    let browser;
+    try {
+      const settings = userId
+        ? await prisma.agentSettings.findFirst({ where: { userId } })
+        : await prisma.agentSettings.findFirst();
+      const launchOptions: any = {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      };
 
-    // Integrate residential proxies if configured
-    if (settings?.proxyUrl) {
-      launchOptions.proxy = { server: settings.proxyUrl };
-      await logSystem('INFO', 'Routing crawl traffic through residential proxy...');
-    }
-
-    browser = await chromiumStealth.launch(launchOptions);
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 800 }
-    });
-
-    // Rehydrate cookies/session if available
-    if (settings?.cookiesJson) {
-      try {
-        const cookies = JSON.parse(settings.cookiesJson);
-        await context.addCookies(cookies);
-        await logSystem('INFO', 'Injected saved session cookies for target site authentication.');
-      } catch (e) {
-        await logSystem('WARNING', 'Failed to load saved session cookies.');
+      // Integrate residential proxies if configured
+      if (settings?.proxyUrl) {
+        launchOptions.proxy = { server: settings.proxyUrl };
+        await logSystem('INFO', 'Routing crawl traffic through residential proxy...');
       }
-    }
 
-    const page = await context.newPage();
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    
-    // Mimic natural user wait
-    await page.waitForTimeout(Math.floor(Math.random() * 2000) + 1000);
+      browser = await chromiumStealth.launch(launchOptions);
+      const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 800 }
+      });
 
-    // Extract page metadata
-    const title = await page.title();
-    
-    // Heuristic analysis of page to find body text
-    const textContent = await page.evaluate(() => {
-      // Find element containing primary content
-      const body = document.querySelector('body');
-      if (!body) return '';
+      // Rehydrate cookies/session if available
+      if (settings?.cookiesJson) {
+        try {
+          const cookies = JSON.parse(settings.cookiesJson);
+          await context.addCookies(cookies);
+          await logSystem('INFO', 'Injected saved session cookies for target site authentication.');
+        } catch (e) {
+          await logSystem('WARNING', 'Failed to load saved session cookies.');
+        }
+      }
+
+      const page = await context.newPage();
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
       
-      // Target containers likely to hold descriptions while stripping scripts/styles
-      const scripts = body.querySelectorAll('script, style, nav, footer, header');
-      scripts.forEach(s => s.remove());
+      // Mimic natural user wait
+      await page.waitForTimeout(Math.floor(Math.random() * 2000) + 1000);
+
+      // Extract page metadata
+      const title = await page.title();
       
-      return body.innerHTML;
-    });
+      // Heuristic analysis of page to find body text
+      const textContent = await page.evaluate(() => {
+        // Find element containing primary content
+        const body = document.querySelector('body');
+        if (!body) return '';
+        
+        // Target containers likely to hold descriptions while stripping scripts/styles
+        const scripts = body.querySelectorAll('script, style, nav, footer, header');
+        scripts.forEach(s => s.remove());
+        
+        return body.innerHTML;
+      });
 
-    const cleanText = cleanDescription(textContent);
-    
-    // Extract name & company heuristics based on title structure
-    let jobTitle = title.split('|')[0].trim();
-    let company = 'Direct Application';
-    
-    if (url.includes('linkedin.com')) {
-      company = title.split(' hiring ')[0] || 'LinkedIn Employer';
-      jobTitle = jobTitle.replace(' hiring now!', '').trim();
-    } else if (url.includes('indeed.com')) {
-      company = title.split(' - ')[1] || 'Indeed Employer';
+      const cleanText = cleanDescription(textContent);
+      
+      // Extract name & company heuristics based on title structure
+      let jobTitle = title.split('|')[0].trim();
+      let company = 'Direct Application';
+      
+      if (url.includes('linkedin.com')) {
+        company = title.split(' hiring ')[0] || 'LinkedIn Employer';
+        jobTitle = jobTitle.replace(' hiring now!', '').trim();
+      } else if (url.includes('indeed.com')) {
+        company = title.split(' - ')[1] || 'Indeed Employer';
+      }
+
+      await logSystem('SUCCESS', `Successfully extracted page content for "${jobTitle}" at "${company}".`);
+
+      const jobData = {
+        title: jobTitle,
+        company,
+        location: 'Remote',
+        url,
+        description: cleanText,
+        platform: url.includes('linkedin.com') ? 'LinkedIn' : url.includes('indeed.com') ? 'Indeed' : 'Web Direct',
+        isRemote: true
+      };
+      return jobData;
+    } catch (e: any) {
+      await logSystem('ERROR', `Stealth Crawler Error on ${url}: ${e.message}`);
+      return null;
+    } finally {
+      if (browser) await browser.close();
     }
-
-    await logSystem('SUCCESS', `Successfully extracted page content for "${jobTitle}" at "${company}".`);
-
-    return {
-      title: jobTitle,
-      company,
-      location: 'Remote',
-      url,
-      description: cleanText,
-      platform: url.includes('linkedin.com') ? 'LinkedIn' : url.includes('indeed.com') ? 'Indeed' : 'Web Direct',
-      isRemote: true
-    };
-
-  } catch (error: any) {
-    await logSystem('ERROR', `Stealth link crawl failed for URL ${url}: ${error?.message || error}`);
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
+  });
 }
 
 /**

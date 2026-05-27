@@ -10,6 +10,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const db_1 = require("../../db");
 const matcher_1 = require("./matcher");
+const crypto_1 = require("../../utils/crypto");
 const chromiumStealth = playwright_extra_1.chromium;
 chromiumStealth.use((0, puppeteer_extra_plugin_stealth_1.default)());
 // Ensure the screenshots directory exists
@@ -108,7 +109,8 @@ async function applyToJob(jobId, userId, dryRun = true) {
         });
         if (settings?.cookiesJson) {
             try {
-                const cookies = JSON.parse(settings.cookiesJson);
+                const decryptedCookiesJson = (0, crypto_1.decryptString)(settings.cookiesJson);
+                const cookies = JSON.parse(decryptedCookiesJson);
                 await context.addCookies(cookies);
                 await logStep('Rehydrated session storage with saved cookies.');
             }
@@ -184,18 +186,7 @@ async function applyToJob(jobId, userId, dryRun = true) {
                 }
             }
         }
-        // 4. Resume File Upload
-        if (profile.resumePath && fs_1.default.existsSync(profile.resumePath)) {
-            for (const selector of fileSelectors) {
-                if (await page.locator(selector).count() > 0) {
-                    await logStep(`Uploading resume document file: ${path_1.default.basename(profile.resumePath)}`);
-                    await page.setInputFiles(selector, profile.resumePath);
-                    await sleep(2000); // Wait for upload
-                    formsFound = true;
-                    break;
-                }
-            }
-        }
+        // 4. Resume File Upload (Disabled - Files are not stored)
         // 5. Cover Letter Textarea Fill
         for (const selector of coverLetterSelectors) {
             if (await page.locator(selector).count() > 0) {

@@ -17,6 +17,10 @@ const scraper_1 = require("./services/agent/scraper");
 const applier_1 = require("./services/agent/applier");
 const subscriptionService_1 = require("./services/subscriptionService");
 const paymentVerifier_1 = require("./services/paymentVerifier");
+const hrFinder_1 = require("./services/hrFinder");
+const emailGenerator_1 = require("./services/emailGenerator");
+const crypto_1 = require("./utils/crypto");
+const crypto_2 = __importDefault(require("crypto"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
@@ -51,14 +55,11 @@ const loginLimiter = (0, express_rate_limit_1.default)({
 const PUBLIC_DIR = path_1.default.join(__dirname, '..', '..', 'public');
 app.use('/public', express_1.default.static(PUBLIC_DIR));
 // Uploads folder
-const UPLOADS_DIR = process.env.VERCEL ? '/tmp/uploads' : path_1.default.join(__dirname, '..', '..', 'uploads');
+const UPLOADS_DIR = process.env.RENDER ? '/tmp/uploads' : path_1.default.join(__dirname, '..', '..', 'uploads');
 if (!fs_1.default.existsSync(UPLOADS_DIR)) {
     fs_1.default.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
-const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-    filename: (req, file, cb) => cb(null, `${Date.now()}_${file.originalname}`),
-});
+const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
     storage,
     fileFilter: (req, file, cb) => {
@@ -67,6 +68,13 @@ const upload = (0, multer_1.default)({
             return cb(new Error('Only PDF files are supported.'));
         cb(null, true);
     },
+});
+app.get('/', (req, res) => {
+    res.json({
+        status: 'active',
+        message: 'VANBA Job Hunter AI Engine is successfully running on Render!',
+        timestamp: new Date().toISOString()
+    });
 });
 // SSE log streaming
 let sseClients = [];
@@ -197,8 +205,7 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
         if (!req.file)
             return res.status(400).json({ error: 'No resume file uploaded.' });
         const userId = getUserId(req);
-        const filePath = req.file.path;
-        const rawText = await (0, resumeParser_1.extractTextFromPdf)(filePath);
+        const rawText = await (0, resumeParser_1.extractTextFromPdf)(req.file.buffer);
         const parsedData = await (0, resumeParser_1.parseResumeWithAI)(rawText, userId);
         await db_1.supabase.from('user_profiles').delete().eq('user_id', userId);
         const { data: profile } = await db_1.supabase.from('user_profiles').insert([{
@@ -209,7 +216,7 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
                 experience: JSON.stringify(parsedData.experience),
                 education: JSON.stringify(parsedData.education),
                 raw_resume_text: rawText,
-                resume_path: filePath,
+                resume_path: null,
                 target_titles: JSON.stringify(parsedData.targetTitles),
             }]).select().single();
         (0, scraper_1.runScraperJob)().catch(() => { });
@@ -241,9 +248,26 @@ app.get('/api/profile', requireAuth, async (req, res) => {
 app.put('/api/profile', requireAuth, async (req, res) => {
     try {
         const userId = getUserId(req);
+        const dbPayload = {
+            user_id: userId,
+            full_name: req.body.full_name || req.body.fullName || '',
+            professional_email: req.body.professional_email || req.body.email || '',
+            phone: req.body.phone || '',
+            dob: req.body.dob || new Date().toISOString().split('T')[0],
+            current_institution: req.body.current_institution || 'N/A',
+            state: req.body.state || '',
+            city: req.body.city || '',
+            resume_url: req.body.resume_url || '',
+            raw_resume_text: req.body.raw_resume_text || '',
+            target_titles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : '[]',
+            skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : '[]',
+            experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : '[]',
+            education: req.body.education ? (typeof req.body.education === 'string' ? req.body.education : JSON.stringify(req.body.education)) : '[]',
+            onboarding_completed: true
+        };
         const { data: updated, error } = await db_1.supabase
             .from('user_profiles')
-            .upsert({ ...req.body, user_id: userId, onboarding_completed: true }, { onConflict: 'user_id' })
+            .upsert(dbPayload, { onConflict: 'user_id' })
             .select()
             .single();
         if (error)
@@ -288,6 +312,9 @@ app.post('/api/jobs/:id/apply', requireAuth, requirePremium, async (req, res) =>
 app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
     try {
         const settings = await (0, subscriptionService_1.getOrCreateUserSettings)(getUserId(req));
+        if (settings && settings.cookiesJson) {
+            settings.cookiesJson = (0, crypto_1.decryptString)(settings.cookiesJson);
+        }
         res.json(settings);
     }
     catch (error) {
@@ -297,9 +324,13 @@ app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
 app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
     try {
         const userId = getUserId(req);
+        const payload = { ...req.body };
+        if (payload.cookiesJson) {
+            payload.cookiesJson = (0, crypto_1.encryptString)(payload.cookiesJson);
+        }
         const { data: updated } = await db_1.supabase
             .from('agent_settings')
-            .update(req.body)
+            .update(payload)
             .eq('user_id', userId)
             .select()
             .single();
@@ -339,10 +370,81 @@ app.post('/api/subscription/subscribe', requireAuth, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+app.post('/api/subscription/webhook', async (req, res) => {
+    try {
+        const webhookSecret = process.env.COSMOFEED_WEBHOOK_SECRET;
+        if (webhookSecret) {
+            const signature = req.headers['x-cosmofeed-signature'] || req.headers['x-webhook-signature'];
+            if (!signature) {
+                return res.status(401).json({ error: 'Missing webhook signature' });
+            }
+            const payloadString = JSON.stringify(req.body);
+            const expectedSignature = crypto_2.default.createHmac('sha256', webhookSecret).update(payloadString).digest('hex');
+            if (signature !== expectedSignature) {
+                return res.status(401).json({ error: 'Invalid webhook signature' });
+            }
+        }
+        const { userId, planType, status } = req.body;
+        if (status !== 'SUCCESS')
+            return res.json({ message: 'Ignored non-success event' });
+        const days = planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : 60;
+        const PLAN_MAP = { WEEKLY: 10, MONTHLY: 25, TWO_MONTH: 35 };
+        await db_1.supabase.from('subscriptions').upsert({
+            user_id: userId,
+            plan_type: planType,
+            jobs_visible: PLAN_MAP[planType] || 10,
+            active_until: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+        }, { onConflict: 'user_id' });
+        await (0, db_1.logSystem)('SUCCESS', `Webhook: Upgraded user ${userId} to ${planType}`);
+        res.json({ message: 'Webhook processed' });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 app.get('/api/logs', async (req, res) => {
     try {
         const { data: logs } = await db_1.supabase.from('system_logs').select('*').order('timestamp', { ascending: false }).limit(100);
         res.json(logs);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+// AI Agent Networking Tools
+app.post('/api/agent/find-hr', requireAuth, requirePremium, async (req, res) => {
+    try {
+        const userId = getUserId(req);
+        const sub = await (0, subscriptionService_1.getOrCreateSubscription)(userId);
+        if (sub.plan_type === 'WEEKLY') {
+            return res.status(403).json({ error: 'HR Email Discovery is available on Monthly plan and above. Please upgrade!' });
+        }
+        const { companyName } = req.body;
+        if (!companyName)
+            return res.status(400).json({ error: 'Company name is required.' });
+        const result = await (0, hrFinder_1.findHREmail)(companyName);
+        res.json(result);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req, res) => {
+    try {
+        const userId = getUserId(req);
+        // Check subscription plan limits
+        const sub = await (0, subscriptionService_1.getOrCreateSubscription)(userId);
+        if (sub.plan_type === 'WEEKLY' || sub.plan_type === 'MONTHLY') {
+            return res.status(403).json({ error: 'AI Cold Email Drafting is locked on Weekly/Monthly Plans. Upgrade to Quarterly or VIP to unlock this feature!' });
+        }
+        const { jobTitle, companyName, hrEmail } = req.body;
+        const { data: profile } = await db_1.supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle();
+        const parsedProfile = profile ? {
+            fullName: profile.full_name,
+            skills: JSON.parse(profile.skills || '[]')
+        } : {};
+        const draft = await (0, emailGenerator_1.generateColdEmail)(jobTitle, companyName, hrEmail, parsedProfile);
+        res.json({ draft });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -434,9 +536,12 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    app.listen(PORT, () => {
-        console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
+});
 exports.default = app;
+// Self-ping to keep Render awake
+setInterval(() => {
+    const url = 'https://job-hunter-ai-koe0.onrender.com/';
+    fetch(url).then(res => console.log('Self-ping successful: ' + res.status)).catch(err => console.error('Self-ping failed:', err));
+}, 10 * 60 * 1000);

@@ -11,9 +11,11 @@ exports.scrapeGenericRss = scrapeGenericRss;
 exports.scrapeWeWorkRemotely = scrapeWeWorkRemotely;
 exports.crawlStealthJobLink = crawlStealthJobLink;
 exports.scrapeRemotiveApi = scrapeRemotiveApi;
+exports.scrapeCustomListUrls = scrapeCustomListUrls;
 exports.runScraperJob = runScraperJob;
 const playwright_extra_1 = require("playwright-extra");
 const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
+const playwrightQueue_1 = require("../../utils/playwrightQueue");
 const db_1 = require("../../db");
 const matcher_1 = require("./matcher");
 const child_process_1 = require("child_process");
@@ -326,7 +328,8 @@ async function fetchWithPythonFallback(url) {
     // Python requests library fallback
     return new Promise((resolve, reject) => {
         const scriptPath = path_1.default.join(__dirname, 'crawler.py');
-        (0, child_process_1.execFile)('python', [scriptPath, url], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+        (0, child_process_1.execFile)(pythonCmd, [scriptPath, url], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error) {
                 reject(new Error(stderr.trim() || error.message));
             }
@@ -410,85 +413,87 @@ async function scrapeWeWorkRemotely() {
  * userId is used for per-user proxy/cookie settings.
  */
 async function crawlStealthJobLink(url, userId) {
-    await (0, db_1.logSystem)('INFO', `Navigating stealth crawler to: ${url}`);
-    let browser;
-    try {
-        const settings = userId
-            ? await db_1.prisma.agentSettings.findFirst({ where: { userId } })
-            : await db_1.prisma.agentSettings.findFirst();
-        const launchOptions = {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        };
-        // Integrate residential proxies if configured
-        if (settings?.proxyUrl) {
-            launchOptions.proxy = { server: settings.proxyUrl };
-            await (0, db_1.logSystem)('INFO', 'Routing crawl traffic through residential proxy...');
-        }
-        browser = await chromiumStealth.launch(launchOptions);
-        const context = await browser.newContext({
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            viewport: { width: 1280, height: 800 }
-        });
-        // Rehydrate cookies/session if available
-        if (settings?.cookiesJson) {
-            try {
-                const cookies = JSON.parse(settings.cookiesJson);
-                await context.addCookies(cookies);
-                await (0, db_1.logSystem)('INFO', 'Injected saved session cookies for target site authentication.');
+    return playwrightQueue_1.playwrightQueue.enqueue(async () => {
+        await (0, db_1.logSystem)('INFO', `Navigating stealth crawler to: ${url}`);
+        let browser;
+        try {
+            const settings = userId
+                ? await db_1.prisma.agentSettings.findFirst({ where: { userId } })
+                : await db_1.prisma.agentSettings.findFirst();
+            const launchOptions = {
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            };
+            // Integrate residential proxies if configured
+            if (settings?.proxyUrl) {
+                launchOptions.proxy = { server: settings.proxyUrl };
+                await (0, db_1.logSystem)('INFO', 'Routing crawl traffic through residential proxy...');
             }
-            catch (e) {
-                await (0, db_1.logSystem)('WARNING', 'Failed to load saved session cookies.');
+            browser = await chromiumStealth.launch(launchOptions);
+            const context = await browser.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                viewport: { width: 1280, height: 800 }
+            });
+            // Rehydrate cookies/session if available
+            if (settings?.cookiesJson) {
+                try {
+                    const cookies = JSON.parse(settings.cookiesJson);
+                    await context.addCookies(cookies);
+                    await (0, db_1.logSystem)('INFO', 'Injected saved session cookies for target site authentication.');
+                }
+                catch (e) {
+                    await (0, db_1.logSystem)('WARNING', 'Failed to load saved session cookies.');
+                }
             }
+            const page = await context.newPage();
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            // Mimic natural user wait
+            await page.waitForTimeout(Math.floor(Math.random() * 2000) + 1000);
+            // Extract page metadata
+            const title = await page.title();
+            // Heuristic analysis of page to find body text
+            const textContent = await page.evaluate(() => {
+                // Find element containing primary content
+                const body = document.querySelector('body');
+                if (!body)
+                    return '';
+                // Target containers likely to hold descriptions while stripping scripts/styles
+                const scripts = body.querySelectorAll('script, style, nav, footer, header');
+                scripts.forEach(s => s.remove());
+                return body.innerHTML;
+            });
+            const cleanText = cleanDescription(textContent);
+            // Extract name & company heuristics based on title structure
+            let jobTitle = title.split('|')[0].trim();
+            let company = 'Direct Application';
+            if (url.includes('linkedin.com')) {
+                company = title.split(' hiring ')[0] || 'LinkedIn Employer';
+                jobTitle = jobTitle.replace(' hiring now!', '').trim();
+            }
+            else if (url.includes('indeed.com')) {
+                company = title.split(' - ')[1] || 'Indeed Employer';
+            }
+            await (0, db_1.logSystem)('SUCCESS', `Successfully extracted page content for "${jobTitle}" at "${company}".`);
+            const jobData = {
+                title: jobTitle,
+                company,
+                location: 'Remote',
+                url,
+                description: cleanText,
+                platform: url.includes('linkedin.com') ? 'LinkedIn' : url.includes('indeed.com') ? 'Indeed' : 'Web Direct',
+                isRemote: true
+            };
+            return jobData;
         }
-        const page = await context.newPage();
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        // Mimic natural user wait
-        await page.waitForTimeout(Math.floor(Math.random() * 2000) + 1000);
-        // Extract page metadata
-        const title = await page.title();
-        // Heuristic analysis of page to find body text
-        const textContent = await page.evaluate(() => {
-            // Find element containing primary content
-            const body = document.querySelector('body');
-            if (!body)
-                return '';
-            // Target containers likely to hold descriptions while stripping scripts/styles
-            const scripts = body.querySelectorAll('script, style, nav, footer, header');
-            scripts.forEach(s => s.remove());
-            return body.innerHTML;
-        });
-        const cleanText = cleanDescription(textContent);
-        // Extract name & company heuristics based on title structure
-        let jobTitle = title.split('|')[0].trim();
-        let company = 'Direct Application';
-        if (url.includes('linkedin.com')) {
-            company = title.split(' hiring ')[0] || 'LinkedIn Employer';
-            jobTitle = jobTitle.replace(' hiring now!', '').trim();
+        catch (e) {
+            await (0, db_1.logSystem)('ERROR', `Stealth Crawler Error on ${url}: ${e.message}`);
+            return null;
         }
-        else if (url.includes('indeed.com')) {
-            company = title.split(' - ')[1] || 'Indeed Employer';
+        finally {
+            if (browser)
+                await browser.close();
         }
-        await (0, db_1.logSystem)('SUCCESS', `Successfully extracted page content for "${jobTitle}" at "${company}".`);
-        return {
-            title: jobTitle,
-            company,
-            location: 'Remote',
-            url,
-            description: cleanText,
-            platform: url.includes('linkedin.com') ? 'LinkedIn' : url.includes('indeed.com') ? 'Indeed' : 'Web Direct',
-            isRemote: true
-        };
-    }
-    catch (error) {
-        await (0, db_1.logSystem)('ERROR', `Stealth link crawl failed for URL ${url}: ${error?.message || error}`);
-        return null;
-    }
-    finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
+    });
 }
 /**
  * Scrapes Remotive using their official, unblocked developer API with smart targeted queries.
@@ -526,6 +531,60 @@ async function scrapeRemotiveApi(searchTerms) {
     const uniqueJobs = Array.from(new Map(allJobs.map(item => [item.url, item])).values());
     await (0, db_1.logSystem)('SUCCESS', `Successfully scraped ${uniqueJobs.length} unique remote jobs from Remotive API.`);
     return uniqueJobs;
+}
+/**
+ * Scrapes URLs from listofwebsite.txt using Python curl_cffi fallback.
+ */
+async function scrapeCustomListUrls(searchTerms) {
+    const listPath = path_1.default.join(__dirname, '../../../../listofwebsite.txt');
+    let allJobs = [];
+    if (!require('fs').existsSync(listPath)) {
+        return allJobs;
+    }
+    const lines = require('fs').readFileSync(listPath, 'utf8').split('\n');
+    const targetUrls = [];
+    for (const line of lines) {
+        const parts = line.split('\t');
+        if (parts.length >= 4) {
+            const name = parts[0];
+            const url = parts[3].trim();
+            if (searchTerms.some(term => name.toLowerCase().includes(term.toLowerCase()) || url.toLowerCase().includes(term.toLowerCase()))) {
+                targetUrls.push({ name, url });
+            }
+        }
+    }
+    // Shuffle and pick top 3 matching URLs to avoid infinite loops and timeouts
+    const selectedUrls = targetUrls.sort(() => 0.5 - Math.random()).slice(0, 3);
+    for (const target of selectedUrls) {
+        await (0, db_1.logSystem)('INFO', `Python Scraper: Fetching ${target.name} -> ${target.url}`);
+        try {
+            const jobsJsonStr = await new Promise((resolve, reject) => {
+                const scriptPath = path_1.default.join(__dirname, 'python_job_scraper.py');
+                const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+                (0, child_process_1.execFile)(pythonCmd, [scriptPath, target.url], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+                    if (error) {
+                        reject(new Error(stderr.trim() || error.message));
+                    }
+                    else {
+                        resolve(stdout);
+                    }
+                });
+            });
+            const parsed = JSON.parse(jobsJsonStr);
+            if (parsed.success && Array.isArray(parsed.jobs)) {
+                allJobs = [...allJobs, ...parsed.jobs.map((j) => ({
+                        ...j,
+                        platform: 'PythonCustom',
+                        company: target.name.split('-')[0].trim() || 'Unknown',
+                        isRemote: true
+                    }))];
+            }
+        }
+        catch (e) {
+            await (0, db_1.logSystem)('WARNING', `Python Scraper failed for ${target.url}: ${e?.message || e}`);
+        }
+    }
+    return allJobs;
 }
 /**
  * Runs a full scraping iteration — per-user mode.
@@ -619,6 +678,14 @@ async function runScraperJob(userId) {
         }
         catch (err) {
             await (0, db_1.logSystem)('WARNING', `Failed to scrape Remotive API: ${err?.message || err}`);
+        }
+        // Custom Python Scraper from listofwebsite.txt
+        try {
+            const customJobs = await scrapeCustomListUrls(searchTerms);
+            allScrapedJobs = [...allScrapedJobs, ...customJobs];
+        }
+        catch (err) {
+            await (0, db_1.logSystem)('WARNING', `Failed to run custom Python scraper: ${err?.message || err}`);
         }
         await (0, db_1.logSystem)('INFO', `Scraper aggregated ${allScrapedJobs.length} total remote jobs. Commencing AI evaluation...`);
         let savedCount = 0;

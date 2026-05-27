@@ -1,9 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OPENROUTER_MODELS = void 0;
 exports.generateJSONResponse = generateJSONResponse;
 exports.generateTextResponse = generateTextResponse;
 const db_1 = require("../db");
+const crypto_1 = __importDefault(require("crypto"));
 /**
  * All 26 free / free-preview OpenRouter models available to the user.
  * Add, remove, or reorder this list at any time — the round-robin engine
@@ -43,6 +47,15 @@ exports.OPENROUTER_MODELS = [
 // Persisted to DB inside pickNextModel for crash-safe recovery on next boot.
 // ---------------------------------------------------------------------------
 let modelRotationState = null;
+const aiCache = new Map();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+function getCacheKey(prompt, systemPrompt) {
+    const hash = crypto_1.default.createHash('sha256');
+    hash.update(prompt);
+    if (systemPrompt)
+        hash.update(systemPrompt);
+    return hash.digest('hex');
+}
 /**
  * Load per-user rotation state from the DB. Called on every AI request.
  * @param userId Supabase auth UUID — we join to AgentSettings by appUserId
@@ -119,6 +132,12 @@ function pickNextModel(models) {
  * @param retries        Max total attempts across all models this cycle (default = all models)
  */
 async function callAI({ prompt, systemPrompt, temperature = 0, maxTokens, userId, retries, }) {
+    const cacheKey = getCacheKey(prompt, systemPrompt);
+    const cached = aiCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        (0, db_1.logSystem)('INFO', '[AI Cache] Cache hit! Saving API tokens.');
+        return cached.response;
+    }
     const { aiProvider, models, apiKey, geminiApiKey } = await loadRotationState(userId);
     if (aiProvider === 'GEMINI') {
         (0, db_1.logSystem)('INFO', '[Gemini API] Dispatching request to gemini-2.5-flash');
@@ -144,7 +163,9 @@ async function callAI({ prompt, systemPrompt, temperature = 0, maxTokens, userId
         if (!content)
             throw new Error('Gemini returned empty response');
         // Clean any markdown fences that some models wrap around JSON
-        return content.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim();
+        const finalContent = content.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim();
+        aiCache.set(cacheKey, { response: finalContent, expiresAt: Date.now() + CACHE_TTL_MS });
+        return finalContent;
     }
     // OpenRouter Flow
     let lastError = null;
@@ -189,6 +210,7 @@ async function callAI({ prompt, systemPrompt, temperature = 0, maxTokens, userId
             (0, db_1.logSystem)('SUCCESS', `[OpenRouter] Model #${idx + 1} responded: ${content.length} chars`);
             const cleaned = content.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim();
             modelRotationState.failedModels.clear();
+            aiCache.set(cacheKey, { response: cleaned, expiresAt: Date.now() + CACHE_TTL_MS });
             return cleaned;
         }
         catch (error) {

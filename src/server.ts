@@ -292,6 +292,17 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/jobs/total', async (req, res) => {
+  try {
+    const { count } = await supabase
+      .from('jobs')
+      .select('*', { count: 'exact', head: true });
+    res.json({ total: count || 0 });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/jobs', requireAuth, requirePremium, async (req, res) => {
   try {
     const userId = getUserId(req);

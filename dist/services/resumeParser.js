@@ -12,9 +12,9 @@ const db_1 = require("../db");
 /**
  * Extracts text from a PDF file using pdf-parse
  */
-async function extractTextFromPdf(filePath) {
+async function extractTextFromPdf(input) {
     try {
-        const dataBuffer = fs_1.default.readFileSync(filePath);
+        const dataBuffer = typeof input === 'string' ? fs_1.default.readFileSync(input) : input;
         const data = await (0, pdf_parse_1.default)(dataBuffer);
         return data.text;
     }
