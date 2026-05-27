@@ -6,7 +6,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { supabase, logSystem, logEmitter, isMncCompany } from './db';
+import { supabase, logSystem, logEmitter, isMncCompany, prisma } from './db';
 import { LoginSchema, SignupSchema, ApplySchema, SettingsSchema } from './middleware/validate';
 import { extractTextFromPdf, parseResumeWithAI } from './services/resumeParser';
 import { runScraperJob, crawlStealthJobLink } from './services/agent/scraper';
@@ -189,6 +189,46 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
   }
 });
 
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+    
+    // Redirect back to the frontend's origin so the token is appended to the URL hash
+    const redirectTo = req.headers.origin || 'http://localhost:5173';
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { 
+      redirectTo: `${redirectTo}/`
+    });
+    
+    if (error) throw error;
+    
+    await logSystem('INFO', `Password reset requested for: ${email}`);
+    res.json({ message: 'If the email exists, a reset link has been sent.' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/update-password', requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+    
+    const { error } = await supabase.auth.admin.updateUserById(userId, { password: newPassword });
+    
+    if (error) throw error;
+    
+    await logSystem('SUCCESS', `Password updated successfully for user ID: ${userId}`);
+    res.json({ message: 'Password updated successfully.' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -243,15 +283,38 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
 app.get('/api/profile', requireAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle();
+    const profile = await prisma.userProfile.findUnique({ 
+      where: { userId },
+      include: { user: true }
+    });
+    
     if (!profile) return res.json(null);
+
+    // Unpack extra data from education JSON
+    let eduList = [];
+    let extraData: any = {};
+    try {
+      const parsed = JSON.parse(profile.education || '[]');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'list' in parsed) {
+        eduList = parsed.list;
+        extraData = parsed;
+      } else {
+        eduList = parsed;
+      }
+    } catch (e) {}
+
     res.json({
       ...profile,
-      onboarding_completed: !!profile.onboarding_completed,
-      skills: JSON.parse(profile.skills || '[]'),
-      experience: JSON.parse(profile.experience || '[]'),
-      education: JSON.parse(profile.education || '[]'),
-      targetTitles: JSON.parse(profile.target_titles || '[]'),
+      email: profile.user?.email || '',
+      onboarding_completed: extraData.onboardingCompleted || false,
+      dob: extraData.dob || null,
+      city: extraData.city || null,
+      state: extraData.state || null,
+      current_institution: extraData.currentInstitution || null,
+      skills: profile.skills ? JSON.parse(profile.skills) : [],
+      experience: profile.experience ? JSON.parse(profile.experience) : [],
+      education: eduList,
+      targetTitles: profile.targetTitles ? JSON.parse(profile.targetTitles) : [],
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -261,31 +324,58 @@ app.get('/api/profile', requireAuth, async (req, res) => {
 app.put('/api/profile', requireAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const dbPayload = {
-      user_id: userId,
-      full_name: req.body.full_name || req.body.fullName || '',
-      professional_email: req.body.professional_email || req.body.email || '',
-      phone: req.body.phone || '',
-      dob: req.body.dob || new Date().toISOString().split('T')[0],
-      current_institution: req.body.current_institution || 'N/A',
-      state: req.body.state || '',
-      city: req.body.city || '',
-      resume_url: req.body.resume_url || '',
-      raw_resume_text: req.body.raw_resume_text || '',
-      target_titles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : '[]',
-      skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : '[]',
-      experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : '[]',
-      education: req.body.education ? (typeof req.body.education === 'string' ? req.body.education : JSON.stringify(req.body.education)) : '[]',
-      onboarding_completed: true
+    
+    const existing = await prisma.userProfile.findUnique({ where: { userId } });
+    
+    // Merge education JSON
+    let existingEduData = [];
+    let existingExtraData: any = {};
+    try {
+      if (existing && existing.education) {
+        const parsed = JSON.parse(existing.education);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'list' in parsed) {
+          existingEduData = parsed.list;
+          existingExtraData = parsed;
+        } else {
+          existingEduData = parsed;
+        }
+      }
+    } catch(e) {}
+
+    let eduData = existingEduData;
+    if (req.body.education !== undefined) {
+      try {
+        if (typeof req.body.education === 'string') eduData = JSON.parse(req.body.education);
+        else if (Array.isArray(req.body.education)) eduData = req.body.education;
+      } catch(e) {}
+    }
+    
+    const packedEducation = JSON.stringify({
+      list: eduData,
+      dob: req.body.dob !== undefined ? req.body.dob : (existingExtraData.dob || null),
+      currentInstitution: req.body.current_institution !== undefined ? req.body.current_institution : (existingExtraData.currentInstitution || null),
+      city: req.body.city !== undefined ? req.body.city : (existingExtraData.city || null),
+      state: req.body.state !== undefined ? req.body.state : (existingExtraData.state || null),
+      onboardingCompleted: req.body.onboarding_completed !== undefined ? req.body.onboarding_completed : (existingExtraData.onboardingCompleted ?? false)
+    });
+
+    const updatePayload = {
+      fullName: req.body.full_name || req.body.fullName || existing?.fullName || '',
+      phone: req.body.phone !== undefined ? req.body.phone : existing?.phone,
+      resumePath: req.body.resume_url || req.body.resumePath || existing?.resumePath || '',
+      rawResumeText: req.body.raw_resume_text || req.body.rawResumeText || existing?.rawResumeText || '',
+      targetTitles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : existing?.targetTitles || '[]',
+      skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : existing?.skills || '[]',
+      experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : existing?.experience || '[]',
+      education: packedEducation
     };
 
-    const { data: updated, error } = await supabase
-      .from('user_profiles')
-      .upsert(dbPayload, { onConflict: 'user_id' })
-      .select()
-      .single();
+    const updated = await prisma.userProfile.upsert({
+      where: { userId },
+      update: updatePayload,
+      create: { userId, ...updatePayload, fullName: updatePayload.fullName || 'User' }
+    });
     
-    if (error) throw error;
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
