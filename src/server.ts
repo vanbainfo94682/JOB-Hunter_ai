@@ -61,7 +61,7 @@ const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 app.use('/public', express.static(PUBLIC_DIR));
 
 // Uploads folder
-const UPLOADS_DIR = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '..', '..', 'uploads');
+const UPLOADS_DIR = process.env.RENDER ? '/tmp/uploads' : path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -79,7 +79,7 @@ const upload = multer({
 app.get('/', (req, res) => {
   res.json({
     status: 'active',
-    message: 'VANBA Job Hunter AI Engine is successfully running on Vercel!',
+    message: 'VANBA Job Hunter AI Engine is successfully running on Render!',
     timestamp: new Date().toISOString()
   });
 });
@@ -570,7 +570,7 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+if (process.env.NODE_ENV !== 'production' && !process.env.RENDER) {
   app.listen(PORT, () => {
     console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
   });
