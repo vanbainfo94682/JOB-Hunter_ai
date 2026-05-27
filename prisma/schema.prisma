@@ -1,0 +1,175 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AppUser {
+  id            String    @id @db.Uuid // Matches Supabase Auth UID
+  email         String    @unique
+  fullName      String
+  createdAt     DateTime  @default(now())
+
+  profile       UserProfile?
+  subscriptions Subscription[]
+  payments      Payment[]
+  jobs          Job[]
+  settings      AgentSettings?
+
+  @@map("app_users")
+}
+
+model UserProfile {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @db.Uuid
+  user             AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName         String
+  phone            String?
+  skills           String   @db.Text
+  experience       String   @db.Text
+  education        String   @db.Text
+  rawResumeText    String   @db.Text
+  resumePath       String
+  targetTitles     String   @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+model Job {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @db.Uuid
+  user         AppUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  title        String
+  company      String
+  isMnc        Boolean  @default(false)
+  location     String
+  isRemote     Boolean  @default(true)
+  workType     String   @default("REMOTE")
+  platform     String
+  url          String   @unique
+  description  String   @db.Text
+  salary       String?
+  postedDate   String?
+  isInternship Boolean  @default(false)
+  duration     String?
+  stipend      String?
+  matchScore   Int
+  matchReason  String?  @db.Text
+  status       String   // 'SCRAPED', 'MATCHED', 'APPLIED', 'CLOSED'
+  appliedAt    DateTime?
+  logs         String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([matchScore])
+  @@map("jobs")
+}
+
+model Subscription {
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @db.Uuid
+  user            AppUser       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  planType        PlanType      @default(WEEKLY)
+  status          SubStatus     @default(ACTIVE)
+  jobsVisible     Int
+  jobsCount       Int           @default(0)
+  cycleStart      DateTime
+  cycleEnd        DateTime
+
+  payments        Payment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @db.Uuid
+  user            AppUser       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subscriptionId   String?      @db.Uuid
+  subscription     Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  amount          Float
+  currency        String         @default("INR")
+  planType        PlanType
+  razorpayOrderId String?        @unique
+  razorpayPaymentId String?      @unique
+  status          PaymentStatus  @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime       @default(now())
+
+  @@index([userId])
+  @@map("payments")
+}
+
+model AgentSettings {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @db.Uuid
+  user             AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isActive         Boolean  @default(false)
+  dailyLimit       Int      @default(10)
+  remoteOnly       Boolean  @default(true)
+  includeInternships Boolean @default(true)
+  autoApplyThreshold Int    @default(75)
+  proxyUrl         String?
+  cookiesJson      String?  @db.Text
+  openrouterApiKey String?
+  openrouterModels String?  @db.Text
+  geminiApiKey     String?
+  aiProvider       String   @default("OPENROUTER")
+  rotationIdx      Int?     @default(0)
+  ceoDirective     String?  @db.Text
+  targetField      String?  @db.Text
+  experienceLevel  String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("agent_settings")
+}
+
+model SystemLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  level     String
+  message   String   @db.Text
+  timestamp DateTime @default(now())
+
+  @@map("system_logs")
+}
+
+// ─────────────────────────────────────────────────────
+// Enums (Supported by PostgreSQL)
+// ─────────────────────────────────────────────────────
+
+enum PlanType {
+  WEEKLY
+  MONTHLY
+  TWO_MONTH
+}
+
+enum SubStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
