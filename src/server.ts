@@ -570,10 +570,14 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV !== 'production' && !process.env.RENDER) {
-  app.listen(PORT, () => {
-    console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
+});
 
 export default app;
+
+// Self-ping to keep Render awake
+setInterval(() => {
+  const url = 'https://job-hunter-ai-koe0.onrender.com/';
+  fetch(url).then(res => console.log('Self-ping successful: ' + res.status)).catch(err => console.error('Self-ping failed:', err));
+}, 10 * 60 * 1000);
