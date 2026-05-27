@@ -4,12 +4,12 @@
   "description": "Backend engine for AI Job Hunter Agent",
   "main": "dist/server.js",
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "npx prisma generate",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "prisma generate && tsc",
+    "build": "npx prisma generate && npx tsc",
     "start": "node dist/server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma db push"
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate": "npx prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
