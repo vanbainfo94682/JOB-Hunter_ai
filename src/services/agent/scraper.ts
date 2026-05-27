@@ -355,7 +355,8 @@ export async function fetchWithPythonFallback(url: string): Promise<string> {
   // Python requests library fallback
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, 'crawler.py');
-    execFile('python', [scriptPath, url], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    execFile(pythonCmd, [scriptPath, url], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
         reject(new Error(stderr.trim() || error.message));
       } else {
@@ -586,6 +587,67 @@ export async function scrapeRemotiveApi(searchTerms: string[]): Promise<RawScrap
 }
 
 /**
+ * Scrapes URLs from listofwebsite.txt using Python curl_cffi fallback.
+ */
+export async function scrapeCustomListUrls(searchTerms: string[]): Promise<RawScrapedJob[]> {
+  const listPath = path.join(__dirname, '../../../../listofwebsite.txt');
+  let allJobs: RawScrapedJob[] = [];
+  
+  if (!require('fs').existsSync(listPath)) {
+    return allJobs;
+  }
+
+  const lines = require('fs').readFileSync(listPath, 'utf8').split('\n');
+  const targetUrls: {name: string, url: string}[] = [];
+
+  for (const line of lines) {
+    const parts = line.split('\t');
+    if (parts.length >= 4) {
+      const name = parts[0];
+      const url = parts[3].trim();
+      
+      if (searchTerms.some(term => name.toLowerCase().includes(term.toLowerCase()) || url.toLowerCase().includes(term.toLowerCase()))) {
+         targetUrls.push({name, url});
+      }
+    }
+  }
+
+  // Shuffle and pick top 3 matching URLs to avoid infinite loops and timeouts
+  const selectedUrls = targetUrls.sort(() => 0.5 - Math.random()).slice(0, 3);
+  
+  for (const target of selectedUrls) {
+    await logSystem('INFO', `Python Scraper: Fetching ${target.name} -> ${target.url}`);
+    try {
+      const jobsJsonStr = await new Promise<string>((resolve, reject) => {
+        const scriptPath = path.join(__dirname, 'python_job_scraper.py');
+        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+        execFile(pythonCmd, [scriptPath, target.url], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            reject(new Error(stderr.trim() || error.message));
+          } else {
+            resolve(stdout);
+          }
+        });
+      });
+      
+      const parsed = JSON.parse(jobsJsonStr);
+      if (parsed.success && Array.isArray(parsed.jobs)) {
+        allJobs = [...allJobs, ...parsed.jobs.map((j: any) => ({
+          ...j,
+          platform: 'PythonCustom',
+          company: target.name.split('-')[0].trim() || 'Unknown',
+          isRemote: true
+        }))];
+      }
+    } catch (e: any) {
+      await logSystem('WARNING', `Python Scraper failed for ${target.url}: ${e?.message || e}`);
+    }
+  }
+
+  return allJobs;
+}
+
+/**
  * Runs a full scraping iteration — per-user mode.
  * @param userId   Supabase auth UUID. When omitted (called by background daemon), falls back to the first available user.
  */
@@ -676,6 +738,14 @@ export async function runScraperJob(userId?: string) {
       allScrapedJobs = [...allScrapedJobs, ...remotiveJobs];
     } catch (err: any) {
       await logSystem('WARNING', `Failed to scrape Remotive API: ${err?.message || err}`);
+    }
+
+    // Custom Python Scraper from listofwebsite.txt
+    try {
+      const customJobs = await scrapeCustomListUrls(searchTerms);
+      allScrapedJobs = [...allScrapedJobs, ...customJobs];
+    } catch (err: any) {
+      await logSystem('WARNING', `Failed to run custom Python scraper: ${err?.message || err}`);
     }
 
     await logSystem('INFO', `Scraper aggregated ${allScrapedJobs.length} total remote jobs. Commencing AI evaluation...`);
