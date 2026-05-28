@@ -1,4 +1,4 @@
-import { prisma, logSystem } from '../db';
+import { supabase, logSystem } from '../db';
 import crypto from 'crypto';
 
 /**
@@ -68,8 +68,10 @@ function getCacheKey(prompt: string, systemPrompt?: string): string {
  * @param userId Supabase auth UUID — we join to AgentSettings by appUserId
  */
 async function loadRotationState(userId?: string) {
-  const whereClause = userId ? { userId } : {};
-  const settings = await prisma.agentSettings.findFirst({ where: whereClause as any });
+  let query = supabase.from('agent_settings').select('*');
+  if (userId) query = query.eq('userId', userId);
+  const { data: settings } = await query.limit(1).maybeSingle();
+  
   const aiProvider = settings?.aiProvider || 'OPENROUTER';
   
   // Return early if Gemini is selected

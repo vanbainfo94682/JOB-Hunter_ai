@@ -18,7 +18,7 @@ import { verifyCosmofeedPayment } from './services/paymentVerifier';
 import { findHREmail } from './services/hrFinder';
 import { generateColdEmail } from './services/emailGenerator';
 import { encryptString, decryptString } from './utils/crypto';
-import crypto from 'crypto';
+import crypto, { randomUUID } from 'crypto';
 
 dotenv.config();
 
@@ -233,8 +233,8 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { data: user } = await supabase.from('app_users').select('*').eq('id', userId).single();
-    const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle();
-    const { data: subs } = await supabase.from('subscriptions').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(3);
+    const { data: profile } = await supabase.from('user_profiles').select('*').eq('userId', userId).maybeSingle();
+    const { data: subs } = await supabase.from('subscriptions').select('*').eq('userId', userId).order('createdAt', { ascending: false }).limit(3);
 
     res.json({
       user,
@@ -260,8 +260,9 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
     const rawText = await extractTextFromPdf(req.file.buffer);
     const parsedData = await parseResumeWithAI(rawText, userId);
 
-    await supabase.from('UserProfile').delete().eq('userId', userId);
-    const { data: profile, error } = await supabase.from('UserProfile').insert([{
+    await supabase.from('user_profiles').delete().eq('userId', userId);
+    const { data: profile, error } = await supabase.from('user_profiles').insert([{
+      id: randomUUID(),
       userId: userId,
       fullName: parsedData.fullName || 'User',
       phone: parsedData.phone || null,
@@ -287,7 +288,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
     const userId = getUserId(req);
     // Fetch using Supabase client to bypass Prisma DATABASE_URL issues on Render
     const { data: profile, error: fetchError } = await supabase
-      .from('UserProfile')
+      .from('user_profiles')
       .select('*, user:app_users(email)')
       .eq('userId', userId)
       .maybeSingle();
@@ -335,7 +336,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     
     // Get existing profile using Supabase
     const { data: existing } = await supabase
-      .from('UserProfile')
+      .from('user_profiles')
       .select('*')
       .eq('userId', userId)
       .maybeSingle();
@@ -373,6 +374,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     });
 
     const updatePayload = {
+      id: existing?.id || randomUUID(),
       userId,
       fullName: req.body.full_name || req.body.fullName || existing?.fullName || 'User',
       phone: req.body.phone !== undefined ? req.body.phone : existing?.phone,
@@ -386,7 +388,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 
     // Upsert using Supabase to bypass Prisma issues
     const { data: updated, error: upsertError } = await supabase
-      .from('UserProfile')
+      .from('user_profiles')
       .upsert(updatePayload, { onConflict: 'userId' })
       .select()
       .single();
@@ -419,8 +421,8 @@ app.get('/api/jobs', requireAuth, requirePremium, async (req, res) => {
     const { data: jobs } = await supabase
       .from('jobs')
       .select('*')
-      .or(`user_id.eq.${userId},user_id.is.null`)
-      .order('match_score', { ascending: false })
+      .or(`userId.eq.${userId},userId.is.null`)
+      .order('matchScore', { ascending: false })
       .limit(limit);
 
     res.json((jobs || []).map(j => ({
@@ -465,7 +467,7 @@ app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
     const { data: updated } = await supabase
       .from('agent_settings')
       .update(payload)
-      .eq('user_id', userId)
+      .eq('userId', userId)
       .select()
       .single();
     res.json(updated);
@@ -491,13 +493,13 @@ app.post('/api/subscription/subscribe', requireAuth, async (req, res) => {
     const days = planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : 60;
     
     const { data: sub } = await supabase.from('subscriptions').upsert({
-      user_id: userId,
-      plan_type: planType,
+      userId: userId,
+      planType: planType,
       status: 'ACTIVE',
-      jobs_visible: PLAN_MAP[planType],
+      jobsVisible: PLAN_MAP[planType],
       jobs_count: 0,
-      cycle_start: new Date().toISOString(),
-      cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+      cycleStart: new Date().toISOString(),
+      cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
     }).select().single();
 
     res.json({ message: 'Subscribed.', subscription: sub });
@@ -530,11 +532,11 @@ app.post('/api/subscription/webhook', async (req, res) => {
     const PLAN_MAP: Record<string, number> = { WEEKLY: 10, MONTHLY: 25, TWO_MONTH: 35 };
 
     await supabase.from('subscriptions').upsert({
-      user_id: userId,
-      plan_type: planType,
-      jobs_visible: PLAN_MAP[planType] || 10,
-      active_until: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
-    }, { onConflict: 'user_id' });
+      userId: userId,
+      planType: planType,
+      jobsVisible: PLAN_MAP[planType] || 10,
+      cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+    }, { onConflict: 'userId' });
     
     await logSystem('SUCCESS', `Webhook: Upgraded user ${userId} to ${planType}`);
     res.json({ message: 'Webhook processed' });
@@ -558,7 +560,7 @@ app.post('/api/agent/find-hr', requireAuth, requirePremium, async (req, res) => 
     const userId = getUserId(req);
     const sub = await getOrCreateSubscription(userId);
     
-    if (sub.plan_type === 'WEEKLY') {
+    if (sub.planType === 'WEEKLY') {
       return res.status(403).json({ error: 'HR Email Discovery is available on Monthly plan and above. Please upgrade!' });
     }
 
@@ -577,12 +579,12 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
     
     // Check subscription plan limits
     const sub = await getOrCreateSubscription(userId);
-    if (sub.plan_type === 'WEEKLY' || sub.plan_type === 'MONTHLY') {
+    if (sub.planType === 'WEEKLY' || sub.planType === 'MONTHLY') {
       return res.status(403).json({ error: 'AI Cold Email Drafting is locked on Weekly/Monthly Plans. Upgrade to Quarterly or VIP to unlock this feature!' });
     }
 
     const { jobTitle, companyName, hrEmail } = req.body;
-    const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle();
+    const { data: profile } = await supabase.from('user_profiles').select('*').eq('userId', userId).maybeSingle();
     
     const parsedProfile = profile ? {
       fullName: profile.full_name,
@@ -612,11 +614,11 @@ app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
         }[plan_type as 'WEEKLY'|'MONTHLY'|'TWO_MONTH'|'THREE_MONTH'] || { r: 10, h: 10, o: 10 };
 
         await supabase.from('subscriptions').upsert({
-          user_id: user.id,
-          plan_type: plan_type,
+          userId: user.id,
+          planType: plan_type,
           status: 'ACTIVE',
-          cycle_start: new Date().toISOString(),
-          cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+          cycleStart: new Date().toISOString(),
+          cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
           jobs_remote_count: quotas.r,
           jobs_hybrid_count: quotas.h,
           jobs_onsite_count: quotas.o
@@ -659,11 +661,11 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
       
       // Update Subscription
       await supabase.from('subscriptions').upsert({
-        user_id: userId,
-        plan_type: verification.plan,
+        userId: userId,
+        planType: verification.plan,
         status: 'ACTIVE',
-        cycle_start: new Date().toISOString(),
-        cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+        cycleStart: new Date().toISOString(),
+        cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
         jobs_remote_count: quotas.r,
         jobs_hybrid_count: quotas.h,
         jobs_onsite_count: quotas.o
@@ -671,10 +673,10 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
 
       // Record Payment
       await supabase.from('payments').insert([{
-        user_id: userId,
+        userId: userId,
         amount: 0, // Recorded via scraper
-        plan_type: verification.plan,
-        razorpay_order_id: transactionId,
+        planType: verification.plan,
+        razorpayOrderId: transactionId,
         status: 'COMPLETED'
       }]);
 
