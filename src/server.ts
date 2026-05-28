@@ -260,20 +260,37 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
     const rawText = await extractTextFromPdf(req.file.buffer);
     const parsedData = await parseResumeWithAI(rawText, userId);
 
-    await supabase.from('user_profiles').delete().eq('user_id', userId);
-    const { data: profile, error } = await supabase.from('user_profiles').insert([{
-      id: randomUUID(),
+    // Fetch existing profile to preserve IDs and custom columns
+    const { data: existing } = await supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle();
+
+    const upsertPayload: any = {
       user_id: userId,
-      full_name: parsedData.fullName || 'User',
-      phone: parsedData.phone || null,
-      professional_email: parsedData.email || '',
+      full_name: parsedData.fullName || existing?.full_name || 'User',
+      phone: parsedData.phone || existing?.phone || null,
+      professional_email: parsedData.email || existing?.professional_email || '',
       skills: JSON.stringify(parsedData.skills),
       experience: JSON.stringify(parsedData.experience),
       education: JSON.stringify(parsedData.education),
       raw_resume_text: rawText,
-      resume_url: '',
+      resume_url: existing?.resume_url || '',
       target_titles: JSON.stringify(parsedData.targetTitles),
-    }]).select().single();
+    };
+
+    if (existing?.id) upsertPayload.id = existing.id;
+    if (!existing) {
+       // Fallbacks for NOT NULL columns if this is the first time creating
+       upsertPayload.dob = '';
+       upsertPayload.city = '';
+       upsertPayload.state = '';
+       upsertPayload.current_institution = '';
+       upsertPayload.onboarding_completed = false;
+    }
+
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .upsert(upsertPayload, { onConflict: 'user_id' })
+      .select()
+      .single();
 
     if (error) throw error;
 
