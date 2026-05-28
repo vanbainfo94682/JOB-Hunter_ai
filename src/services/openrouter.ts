@@ -83,28 +83,31 @@ async function loadRotationState(userId?: string) {
     return { aiProvider, geminiApiKey: settings?.gemini_api_key || process.env.GEMINI_API_KEY, apiKey: null, models: null };
   }
 
-  // OpenRouter flow
-  if (!settings?.openrouter_api_key) {
-    if (process.env.OPENROUTER_API_KEY) return { aiProvider, apiKey: process.env.OPENROUTER_API_KEY, models: modelRotationState };
+  // OpenRouter flow — treat empty string same as missing
+  const userKey = settings?.openrouter_api_key?.trim();
+  const envKey = process.env.OPENROUTER_API_KEY?.trim();
+  const apiKey = userKey || envKey;
+
+  if (!apiKey) {
     console.log('ERROR', 'OpenRouter API key not configured. Add it in Settings.');
-    throw new Error('OpenRouter API key not configured');
+    throw new Error('OpenRouter API key not configured. Please add your OpenRouter API key in Settings.');
   }
 
   let savedModels: string[];
   try {
-    savedModels = (settings.openrouter_models || '') ? JSON.parse(settings.openrouter_models!) as string[] : [...OPENROUTER_MODELS];
+    const modelsStr = settings?.openrouter_models?.trim();
+    savedModels = modelsStr ? JSON.parse(modelsStr) as string[] : [...OPENROUTER_MODELS];
   } catch (e) {
     savedModels = [...OPENROUTER_MODELS];
   }
 
   if (savedModels.length === 0) {
-    throw new Error('No OpenRouter models configured. Select at least one model in Settings.');
+    savedModels = [...OPENROUTER_MODELS];
   }
 
   if (!modelRotationState || modelRotationState.activeModels.length !== savedModels.length) {
-    const savedIdx = (settings as any)._rotationIdx as number | undefined;
     modelRotationState = {
-      idx: savedIdx ?? 0,
+      idx: 0,
       failedModels: new Set(),
       activeModels: savedModels,
     };
@@ -112,7 +115,7 @@ async function loadRotationState(userId?: string) {
     modelRotationState.activeModels = savedModels;
   }
 
-  return { aiProvider, apiKey: settings.openrouter_api_key, models: modelRotationState, geminiApiKey: null };
+  return { aiProvider, apiKey, models: modelRotationState, geminiApiKey: null };
 }
 
 /**
