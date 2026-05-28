@@ -140,11 +140,10 @@ async function requirePremium(req: any, res: any, next: any) {
 // ─────────────────────────────────────────────────────────────────
 
 app.get('/api/agent/stream', (req, res) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-  });
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
   sseClients.push(res);
   req.on('close', () => { sseClients = sseClients.filter(c => c !== res); });
 });
@@ -163,7 +162,7 @@ app.post('/api/auth/signup', async (req, res) => {
     const shapedUser = u ? {
       id: u.id,
       email: u.email ?? email,
-      fullName: (u.user_metadata?.full_name ?? fullName ?? ''),
+      full_name: (u.user_metadata?.full_name ?? fullName ?? ''),
     } : null;
     res.json({ message: 'Signup successful.', user: shapedUser, accessToken: data.session?.access_token });
   } catch (error: any) {
@@ -181,7 +180,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     const shapedUser = u ? {
       id: u.id,
       email: u.email ?? email,
-      fullName: (u.user_metadata?.full_name ?? u.user_metadata?.name ?? email),
+      full_name: (u.user_metadata?.full_name ?? u.user_metadata?.name ?? email),
     } : null;
     res.json({ message: 'Login successful.', user: shapedUser, accessToken: data.session?.access_token });
   } catch (error: any) {
@@ -234,7 +233,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
     const userId = getUserId(req);
     const { data: user } = await supabase.from('app_users').select('*').eq('id', userId).single();
     const { data: profile } = await supabase.from('user_profiles').select('*').eq('userId', userId).maybeSingle();
-    const { data: subs } = await supabase.from('subscriptions').select('*').eq('userId', userId).order('createdAt', { ascending: false }).limit(3);
+    const { data: subs } = await supabase.from('subscriptions').select('*').eq('userId', userId).order('created_at', { ascending: false }).limit(3);
 
     res.json({
       user,
@@ -243,7 +242,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
         skills: JSON.parse(profile.skills || '[]'),
         experience: JSON.parse(profile.experience || '[]'),
         education: JSON.parse(profile.education || '[]'),
-        targetTitles: JSON.parse(profile.target_titles || '[]'),
+        target_titles: JSON.parse(profile.target_titles || '[]'),
       } : null,
       subscription: subs && subs.length > 0 ? subs[0] : null,
       subscriptions: subs || [],
@@ -263,15 +262,15 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
     await supabase.from('user_profiles').delete().eq('userId', userId);
     const { data: profile, error } = await supabase.from('user_profiles').insert([{
       id: randomUUID(),
-      userId: userId,
-      fullName: parsedData.fullName || 'User',
+      user_id: userId,
+      full_name: parsedData.fullName || 'User',
       phone: parsedData.phone || null,
       skills: JSON.stringify(parsedData.skills),
       experience: JSON.stringify(parsedData.experience),
       education: JSON.stringify(parsedData.education),
-      rawResumeText: rawText,
+      raw_resume_text: rawText,
       resumePath: '',
-      targetTitles: JSON.stringify(parsedData.targetTitles),
+      target_titles: JSON.stringify(parsedData.targetTitles),
     }]).select().single();
 
     if (error) throw error;
@@ -323,7 +322,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
       skills: profile.skills ? JSON.parse(profile.skills) : [],
       experience: profile.experience ? JSON.parse(profile.experience) : [],
       education: eduList,
-      targetTitles: profile.targetTitles ? JSON.parse(profile.targetTitles) : [],
+      target_titles: profile.targetTitles ? JSON.parse(profile.targetTitles) : [],
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -367,7 +366,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     const packedEducation = JSON.stringify({
       list: eduData,
       dob: req.body.dob !== undefined ? req.body.dob : (existingExtraData.dob || null),
-      currentInstitution: req.body.current_institution !== undefined ? req.body.current_institution : (existingExtraData.currentInstitution || null),
+      current_institution: req.body.current_institution !== undefined ? req.body.current_institution : (existingExtraData.currentInstitution || null),
       city: req.body.city !== undefined ? req.body.city : (existingExtraData.city || null),
       state: req.body.state !== undefined ? req.body.state : (existingExtraData.state || null),
       onboardingCompleted: req.body.onboarding_completed !== undefined ? req.body.onboarding_completed : (existingExtraData.onboardingCompleted ?? false)
@@ -376,11 +375,11 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     const updatePayload = {
       id: existing?.id || randomUUID(),
       userId,
-      fullName: req.body.full_name || req.body.fullName || existing?.fullName || 'User',
+      full_name: req.body.full_name || req.body.fullName || existing?.full_name || 'User',
       phone: req.body.phone !== undefined ? req.body.phone : existing?.phone,
       resumePath: req.body.resume_url || req.body.resumePath || existing?.resumePath || '',
-      rawResumeText: req.body.raw_resume_text || req.body.rawResumeText || existing?.rawResumeText || '',
-      targetTitles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : existing?.targetTitles || '[]',
+      raw_resume_text: req.body.raw_resume_text || req.body.rawResumeText || existing?.raw_resume_text || '',
+      target_titles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : existing?.target_titles || '[]',
       skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : existing?.skills || '[]',
       experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : existing?.experience || '[]',
       education: packedEducation
@@ -389,7 +388,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     // Upsert using Supabase to bypass Prisma issues
     const { data: updated, error: upsertError } = await supabase
       .from('user_profiles')
-      .upsert(updatePayload, { onConflict: 'userId' })
+      .upsert(updatePayload, { onConflict: 'user_id' })
       .select()
       .single();
       
@@ -421,8 +420,8 @@ app.get('/api/jobs', requireAuth, requirePremium, async (req, res) => {
     const { data: jobs } = await supabase
       .from('jobs')
       .select('*')
-      .or(`userId.eq.${userId},userId.is.null`)
-      .order('matchScore', { ascending: false })
+      .or(`user_id.eq.${userId},user_id.is.null`)
+      .order('match_score', { ascending: false })
       .limit(limit);
 
     res.json((jobs || []).map(j => ({
@@ -493,13 +492,13 @@ app.post('/api/subscription/subscribe', requireAuth, async (req, res) => {
     const days = planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : 60;
     
     const { data: sub } = await supabase.from('subscriptions').upsert({
-      userId: userId,
-      planType: planType,
+      user_id: userId,
+      plan_type: planType,
       status: 'ACTIVE',
-      jobsVisible: PLAN_MAP[planType],
+      jobs_visible: PLAN_MAP[planType],
       jobs_count: 0,
-      cycleStart: new Date().toISOString(),
-      cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+      cycle_start: new Date().toISOString(),
+      cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
     }).select().single();
 
     res.json({ message: 'Subscribed.', subscription: sub });
@@ -532,11 +531,11 @@ app.post('/api/subscription/webhook', async (req, res) => {
     const PLAN_MAP: Record<string, number> = { WEEKLY: 10, MONTHLY: 25, TWO_MONTH: 35 };
 
     await supabase.from('subscriptions').upsert({
-      userId: userId,
-      planType: planType,
-      jobsVisible: PLAN_MAP[planType] || 10,
-      cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
-    }, { onConflict: 'userId' });
+      user_id: userId,
+      plan_type: planType,
+      jobs_visible: PLAN_MAP[planType] || 10,
+      cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+    }, { onConflict: 'user_id' });
     
     console.log('SUCCESS', `Webhook: Upgraded user ${userId} to ${planType}`);
     res.json({ message: 'Webhook processed' });
@@ -560,7 +559,7 @@ app.post('/api/agent/find-hr', requireAuth, requirePremium, async (req, res) => 
     const userId = getUserId(req);
     const sub = await getOrCreateSubscription(userId);
     
-    if (sub.planType === 'WEEKLY') {
+    if (sub.plan_type === 'WEEKLY') {
       return res.status(403).json({ error: 'HR Email Discovery is available on Monthly plan and above. Please upgrade!' });
     }
 
@@ -579,7 +578,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
     
     // Check subscription plan limits
     const sub = await getOrCreateSubscription(userId);
-    if (sub.planType === 'WEEKLY' || sub.planType === 'MONTHLY') {
+    if (sub.plan_type === 'WEEKLY' || sub.plan_type === 'MONTHLY') {
       return res.status(403).json({ error: 'AI Cold Email Drafting is locked on Weekly/Monthly Plans. Upgrade to Quarterly or VIP to unlock this feature!' });
     }
 
@@ -587,7 +586,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
     const { data: profile } = await supabase.from('user_profiles').select('*').eq('userId', userId).maybeSingle();
     
     const parsedProfile = profile ? {
-      fullName: profile.full_name,
+      full_name: profile.full_name,
       skills: JSON.parse(profile.skills || '[]')
     } : {};
 
@@ -614,11 +613,11 @@ app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
         }[plan_type as 'WEEKLY'|'MONTHLY'|'TWO_MONTH'|'THREE_MONTH'] || { r: 10, h: 10, o: 10 };
 
         await supabase.from('subscriptions').upsert({
-          userId: user.id,
-          planType: plan_type,
+          user_id: user.id,
+          plan_type: plan_type,
           status: 'ACTIVE',
-          cycleStart: new Date().toISOString(),
-          cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+          cycle_start: new Date().toISOString(),
+          cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
           jobs_remote_count: quotas.r,
           jobs_hybrid_count: quotas.h,
           jobs_onsite_count: quotas.o
@@ -661,11 +660,11 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
       
       // Update Subscription
       await supabase.from('subscriptions').upsert({
-        userId: userId,
-        planType: verification.plan,
+        user_id: userId,
+        plan_type: verification.plan,
         status: 'ACTIVE',
-        cycleStart: new Date().toISOString(),
-        cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+        cycle_start: new Date().toISOString(),
+        cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
         jobs_remote_count: quotas.r,
         jobs_hybrid_count: quotas.h,
         jobs_onsite_count: quotas.o
@@ -673,10 +672,10 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
 
       // Record Payment
       await supabase.from('payments').insert([{
-        userId: userId,
+        user_id: userId,
         amount: 0, // Recorded via scraper
-        planType: verification.plan,
-        razorpayOrderId: transactionId,
+        plan_type: verification.plan,
+        razorpay_order_id: transactionId,
         status: 'COMPLETED'
       }]);
 

@@ -35,7 +35,7 @@ export async function getOrCreateUserSettings(userId: string, fallbackKey?: stri
     .from('agent_settings')
     .insert([{
       id: randomUUID(),
-      userId: userId,
+      user_id: userId,
       isActive: false,
       dailyLimit: 10,
       remoteOnly: true,
@@ -65,7 +65,7 @@ export async function getOrCreateSubscription(userId: string) {
   if (active && new Date() > new Date(active.cycleEnd)) {
     const { data: expired } = await supabase
       .from('subscriptions')
-      .update({ status: 'EXPIRED', jobsCount: 0 })
+      .update({ status: 'EXPIRED', jobs_count: 0 })
       .eq('id', active.id)
       .select()
       .single();
@@ -81,13 +81,13 @@ export async function getOrCreateSubscription(userId: string) {
     .from('subscriptions')
     .insert([{
       id: randomUUID(),
-      userId: userId,
-      planType: 'WEEKLY',
+      user_id: userId,
+      plan_type: 'WEEKLY',
       status: 'ACTIVE',
-      jobsVisible: PLAN_JOBS['WEEKLY'],
-      jobsCount: 0,
-      cycleStart: now.toISOString(),
-      cycleEnd: end.toISOString(),
+      jobs_visible: PLAN_JOBS['WEEKLY'],
+      jobs_count: 0,
+      cycle_start: now.toISOString(),
+      cycle_end: end.toISOString(),
     }])
     .select()
     .single();
@@ -107,7 +107,7 @@ export function getPlanDetails(planType: string) {
   return {
     name: planNames[planType] || 'Standard Plan',
     priceINR: planType === 'WEEKLY' ? 50 : planType === 'MONTHLY' ? 190 : 399,
-    jobsVisible: PLAN_JOBS[planType] || 10,
+    jobs_visible: PLAN_JOBS[planType] || 10,
     durationDays: planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : 60,
     features: planType === 'WEEKLY'
       ? ['10 curated jobs / week', 'Basic resume matching', 'Email support']
@@ -120,6 +120,6 @@ export function getPlanDetails(planType: string) {
 /**
  * Check if user has view quota remaining for the current cycle.
  */
-export function hasViewQuota(sub: { jobsCount: number; jobsVisible: number }): boolean {
-  return sub.jobsCount < sub.jobsVisible;
+export function hasViewQuota(sub: { jobs_count: number; jobs_visible: number }): boolean {
+  return sub.jobs_count < sub.jobs_visible;
 }
