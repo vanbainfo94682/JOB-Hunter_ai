@@ -290,11 +290,17 @@ export async function generateJSONResponse<T>(prompt: string, systemInstruction?
     userId,
   });
   let jsonStr = raw.trim();
-  const mdMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (mdMatch && mdMatch[1]) {
-    jsonStr = mdMatch[1].trim();
+  
+  // Robust JSON extraction: find the outermost curly braces
+  const firstBrace = jsonStr.indexOf('{');
+  const lastBrace = jsonStr.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
   }
   
+  // Fix common AI JSON errors: trailing commas
+  jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1');
   try {
     return JSON.parse(jsonStr) as T;
   } catch (error: any) {
