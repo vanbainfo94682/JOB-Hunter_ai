@@ -7,6 +7,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "npx prisma generate && npx tsc",
     "start": "node dist/server.js",
+    "postinstall": "node ./scripts/install-playwright.js",
+    "playwright:install": "node ./scripts/install-playwright.js",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma db push"
   },

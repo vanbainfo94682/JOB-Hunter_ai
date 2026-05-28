@@ -1,9 +1,9 @@
+import './playwrightEnv';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { supabase, logSystem, logEmitter, isMncCompany, prisma } from './db';
@@ -19,8 +19,6 @@ import { findHREmail } from './services/hrFinder';
 import { generateColdEmail } from './services/emailGenerator';
 import { encryptString, decryptString } from './utils/crypto';
 import crypto, { randomUUID } from 'crypto';
-
-dotenv.config();
 
 const app = express();
 app.set('trust proxy', 1);

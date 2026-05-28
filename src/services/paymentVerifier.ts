@@ -21,17 +21,20 @@ export async function verifyCosmofeedPayment(orderId: string): Promise<{ success
       await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
       // 1. Anti-Fake check: Ensure the order exists and is marked as 'Success'
+      if (!orderId || orderId.trim().length < 8) {
+        return { success: false };
+      }
+
+      // Check specific elements rather than generic body text to prevent false positives on 404 pages
       const statusText = await page.textContent('.order-status').catch(() => null); 
-      const bodyText = await page.textContent('body').catch(() => '');
+      const successHeader = await page.textContent('h1, h2, .success-title').catch(() => null);
       
       let isSuccess = false;
       if (statusText) {
         isSuccess = statusText.toLowerCase().includes('success') || statusText.toLowerCase().includes('completed');
-      }
-      if (!isSuccess && bodyText) {
-        // Fallback: Check if the page itself mentions success
-        const lowerBody = bodyText.toLowerCase();
-        isSuccess = lowerBody.includes('payment successful') || lowerBody.includes('order successful') || lowerBody.includes('payment completed');
+      } else if (successHeader) {
+        const lowerHeader = successHeader.toLowerCase();
+        isSuccess = lowerHeader.includes('successful') || lowerHeader.includes('completed');
       }
 
       // 2. Extract Plan type if present on page
@@ -41,8 +44,9 @@ export async function verifyCosmofeedPayment(orderId: string): Promise<{ success
         planType = planText.toLowerCase().includes('weekly') ? 'WEEKLY' : 
                    planText.toLowerCase().includes('monthly') ? 'MONTHLY' : 'TWO_MONTH';
       }
-      if (!planType && bodyText) {
-        const lowerBody = bodyText.toLowerCase();
+      if (!planType) {
+        const fullBody = await page.textContent('body').catch(() => '');
+        const lowerBody = fullBody.toLowerCase();
         planType = lowerBody.includes('weekly') ? 'WEEKLY' : 
                    lowerBody.includes('monthly') ? 'MONTHLY' : 
                    lowerBody.includes('quarterly') || lowerBody.includes('two') ? 'TWO_MONTH' : 'WEEKLY'; // default to weekly if not found
