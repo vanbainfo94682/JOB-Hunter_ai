@@ -260,18 +260,20 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
     const rawText = await extractTextFromPdf(req.file.buffer);
     const parsedData = await parseResumeWithAI(rawText, userId);
 
-    await supabase.from('user_profiles').delete().eq('user_id', userId);
-    const { data: profile } = await supabase.from('user_profiles').insert([{
-      user_id: userId,
-      full_name: parsedData.fullName,
+    await supabase.from('UserProfile').delete().eq('userId', userId);
+    const { data: profile, error } = await supabase.from('UserProfile').insert([{
+      userId: userId,
+      fullName: parsedData.fullName || 'User',
       phone: parsedData.phone || null,
       skills: JSON.stringify(parsedData.skills),
       experience: JSON.stringify(parsedData.experience),
       education: JSON.stringify(parsedData.education),
-      raw_resume_text: rawText,
-      resume_path: null,
-      target_titles: JSON.stringify(parsedData.targetTitles),
+      rawResumeText: rawText,
+      resumePath: '',
+      targetTitles: JSON.stringify(parsedData.targetTitles),
     }]).select().single();
+
+    if (error) throw error;
 
     runScraperJob().catch(() => {});
     res.json({ message: 'Resume uploaded successfully.', profile });
@@ -283,10 +285,16 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
 app.get('/api/profile', requireAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const profile = await prisma.userProfile.findUnique({ 
-      where: { userId },
-      include: { user: true }
-    });
+    // Fetch using Supabase client to bypass Prisma DATABASE_URL issues on Render
+    const { data: profile, error: fetchError } = await supabase
+      .from('UserProfile')
+      .select('*, user:app_users(email)')
+      .eq('userId', userId)
+      .maybeSingle();
+      
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('Supabase fetch error:', fetchError);
+    }
     
     if (!profile) return res.json(null);
 
@@ -325,7 +333,12 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     
-    const existing = await prisma.userProfile.findUnique({ where: { userId } });
+    // Get existing profile using Supabase
+    const { data: existing } = await supabase
+      .from('UserProfile')
+      .select('*')
+      .eq('userId', userId)
+      .maybeSingle();
     
     // Merge education JSON
     let existingEduData = [];
@@ -360,7 +373,8 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     });
 
     const updatePayload = {
-      fullName: req.body.full_name || req.body.fullName || existing?.fullName || '',
+      userId,
+      fullName: req.body.full_name || req.body.fullName || existing?.fullName || 'User',
       phone: req.body.phone !== undefined ? req.body.phone : existing?.phone,
       resumePath: req.body.resume_url || req.body.resumePath || existing?.resumePath || '',
       rawResumeText: req.body.raw_resume_text || req.body.rawResumeText || existing?.rawResumeText || '',
@@ -370,11 +384,14 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       education: packedEducation
     };
 
-    const updated = await prisma.userProfile.upsert({
-      where: { userId },
-      update: updatePayload,
-      create: { userId, ...updatePayload, fullName: updatePayload.fullName || 'User' }
-    });
+    // Upsert using Supabase to bypass Prisma issues
+    const { data: updated, error: upsertError } = await supabase
+      .from('UserProfile')
+      .upsert(updatePayload, { onConflict: 'userId' })
+      .select()
+      .single();
+      
+    if (upsertError) throw upsertError;
     
     res.json(updated);
   } catch (error: any) {
