@@ -259,7 +259,7 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
     const rawText = await extractTextFromPdf(req.file.buffer);
     const parsedData = await parseResumeWithAI(rawText, userId);
 
-    await supabase.from('user_profiles').delete().eq('userId', userId);
+    await supabase.from('user_profiles').delete().eq('user_id', userId);
     const { data: profile, error } = await supabase.from('user_profiles').insert([{
       id: randomUUID(),
       user_id: userId,
@@ -269,7 +269,7 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
       experience: JSON.stringify(parsedData.experience),
       education: JSON.stringify(parsedData.education),
       raw_resume_text: rawText,
-      resumePath: '',
+      resume_url: '',
       target_titles: JSON.stringify(parsedData.targetTitles),
     }]).select().single();
 

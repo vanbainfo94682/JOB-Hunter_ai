@@ -69,22 +69,22 @@ function getCacheKey(prompt: string, systemPrompt?: string): string {
  */
 async function loadRotationState(userId?: string) {
   let query = supabase.from('agent_settings').select('*');
-  if (userId) query = query.eq('userId', userId);
+  if (userId) query = query.eq('user_id', userId);
   const { data: settings } = await query.limit(1).maybeSingle();
   
-  const aiProvider = settings?.aiProvider || 'OPENROUTER';
+  const aiProvider = settings?.ai_provider || 'OPENROUTER';
   
   // Return early if Gemini is selected
   if (aiProvider === 'GEMINI') {
-    if (!settings?.geminiApiKey && !process.env.GEMINI_API_KEY) {
+    if (!settings?.gemini_api_key && !process.env.GEMINI_API_KEY) {
       console.log('ERROR', 'Gemini API key not configured.');
       throw new Error('Gemini API key not configured');
     }
-    return { aiProvider, geminiApiKey: settings?.geminiApiKey || process.env.GEMINI_API_KEY, apiKey: null, models: null };
+    return { aiProvider, geminiApiKey: settings?.gemini_api_key || process.env.GEMINI_API_KEY, apiKey: null, models: null };
   }
 
   // OpenRouter flow
-  if (!settings?.openrouterApiKey) {
+  if (!settings?.openrouter_api_key) {
     if (process.env.OPENROUTER_API_KEY) return { aiProvider, apiKey: process.env.OPENROUTER_API_KEY, models: modelRotationState };
     console.log('ERROR', 'OpenRouter API key not configured. Add it in Settings.');
     throw new Error('OpenRouter API key not configured');
@@ -92,7 +92,7 @@ async function loadRotationState(userId?: string) {
 
   let savedModels: string[];
   try {
-    savedModels = (settings.openrouterModels || '') ? JSON.parse(settings.openrouterModels!) as string[] : [...OPENROUTER_MODELS];
+    savedModels = (settings.openrouter_models || '') ? JSON.parse(settings.openrouter_models!) as string[] : [...OPENROUTER_MODELS];
   } catch (e) {
     savedModels = [...OPENROUTER_MODELS];
   }
@@ -112,7 +112,7 @@ async function loadRotationState(userId?: string) {
     modelRotationState.activeModels = savedModels;
   }
 
-  return { aiProvider, apiKey: settings.openrouterApiKey, models: modelRotationState, geminiApiKey: null };
+  return { aiProvider, apiKey: settings.openrouter_api_key, models: modelRotationState, geminiApiKey: null };
 }
 
 /**
