@@ -279,7 +279,7 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
     if (existing?.id) upsertPayload.id = existing.id;
     if (!existing) {
        // Fallbacks for NOT NULL columns if this is the first time creating
-       upsertPayload.dob = '';
+       upsertPayload.dob = '1970-01-01';
        upsertPayload.city = '';
        upsertPayload.state = '';
        upsertPayload.current_institution = '';
