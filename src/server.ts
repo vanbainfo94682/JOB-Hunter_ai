@@ -23,6 +23,7 @@ import crypto, { randomUUID } from 'crypto';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
 app.use(helmet());
@@ -313,12 +314,13 @@ app.get('/api/profile', requireAuth, async (req, res) => {
 
     res.json({
       ...profile,
+      fullName: profile.full_name || '',
       email: profile.user?.email || '',
       onboarding_completed: extraData.onboardingCompleted || false,
-      dob: extraData.dob || null,
-      city: extraData.city || null,
-      state: extraData.state || null,
-      current_institution: extraData.currentInstitution || null,
+      dob: extraData.dob || '',
+      city: extraData.city || '',
+      state: extraData.state || '',
+      current_institution: extraData.currentInstitution || '',
       skills: profile.skills ? JSON.parse(profile.skills) : [],
       experience: profile.experience ? JSON.parse(profile.experience) : [],
       education: eduList,
