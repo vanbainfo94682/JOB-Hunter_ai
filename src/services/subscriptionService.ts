@@ -12,18 +12,18 @@ import { randomUUID } from 'crypto';
  * Returns or creates the agent settings for a given Supabase auth user UUID.
  */
 export async function getOrCreateUserSettings(userId: string, fallbackKey?: string) {
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing } = await supabase
     .from('agent_settings')
     .select('*')
-    .eq('userId', userId)
-    .single();
+    .eq('user_id', userId)
+    .maybeSingle();
 
   if (existing) {
-    if (!existing.openrouterApiKey && fallbackKey) {
+    if (!existing.openrouter_api_key && fallbackKey) {
       const { data: updated } = await supabase
         .from('agent_settings')
-        .update({ openrouterApiKey: fallbackKey })
-        .eq('userId', userId)
+        .update({ openrouter_api_key: fallbackKey })
+        .eq('user_id', userId)
         .select()
         .single();
       return updated;
@@ -31,16 +31,17 @@ export async function getOrCreateUserSettings(userId: string, fallbackKey?: stri
     return existing;
   }
 
+  // Create new default settings row
   const { data: created, error: createError } = await supabase
     .from('agent_settings')
     .insert([{
       id: randomUUID(),
       user_id: userId,
-      isActive: false,
-      dailyLimit: 10,
-      remoteOnly: true,
-      autoApplyThreshold: 75,
-      openrouterApiKey: fallbackKey ?? null,
+      is_active: false,
+      daily_limit: 10,
+      remote_only: true,
+      auto_apply_threshold: 75,
+      openrouter_api_key: fallbackKey ?? null,
     }])
     .select()
     .single();
@@ -53,16 +54,16 @@ export async function getOrCreateUserSettings(userId: string, fallbackKey?: stri
  * Returns or creates the active subscription for a given user.
  */
 export async function getOrCreateSubscription(userId: string) {
-  const { data: active, error: fetchError } = await supabase
+  const { data: active } = await supabase
     .from('subscriptions')
     .select('*')
-    .eq('userId', userId)
+    .eq('user_id', userId)
     .eq('status', 'ACTIVE')
-    .order('cycleStart', { ascending: false })
+    .order('cycle_start', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (active && new Date() > new Date(active.cycleEnd)) {
+  if (active && new Date() > new Date(active.cycle_end)) {
     const { data: expired } = await supabase
       .from('subscriptions')
       .update({ status: 'EXPIRED', jobs_count: 0 })

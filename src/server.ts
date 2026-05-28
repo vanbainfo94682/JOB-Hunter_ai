@@ -289,7 +289,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
     const { data: profile, error: fetchError } = await supabase
       .from('user_profiles')
       .select('*, user:app_users(email)')
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
       
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -322,7 +322,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
       skills: profile.skills ? JSON.parse(profile.skills) : [],
       experience: profile.experience ? JSON.parse(profile.experience) : [],
       education: eduList,
-      target_titles: profile.targetTitles ? JSON.parse(profile.targetTitles) : [],
+      target_titles: profile.target_titles ? JSON.parse(profile.target_titles) : [],
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -337,7 +337,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     const { data: existing } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
     
     // Merge education JSON
@@ -372,18 +372,19 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       onboardingCompleted: req.body.onboarding_completed !== undefined ? req.body.onboarding_completed : (existingExtraData.onboardingCompleted ?? false)
     });
 
-    const updatePayload = {
-      id: existing?.id || randomUUID(),
-      userId,
+    const updatePayload: any = {
+      user_id: userId,
       full_name: req.body.full_name || req.body.fullName || existing?.full_name || 'User',
-      phone: req.body.phone !== undefined ? req.body.phone : existing?.phone,
-      resumePath: req.body.resume_url || req.body.resumePath || existing?.resumePath || '',
+      phone: req.body.phone !== undefined ? req.body.phone : (existing?.phone || null),
+      professional_email: req.body.professional_email || existing?.professional_email || null,
+      resume_url: req.body.resume_url || req.body.resumePath || existing?.resume_url || '',
       raw_resume_text: req.body.raw_resume_text || req.body.rawResumeText || existing?.raw_resume_text || '',
-      target_titles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : existing?.target_titles || '[]',
-      skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : existing?.skills || '[]',
-      experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : existing?.experience || '[]',
+      target_titles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : (existing?.target_titles || '[]'),
+      skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : (existing?.skills || '[]'),
+      experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : (existing?.experience || '[]'),
       education: packedEducation
     };
+    if (existing?.id) updatePayload.id = existing.id;
 
     // Upsert using Supabase to bypass Prisma issues
     const { data: updated, error: upsertError } = await supabase
@@ -446,11 +447,27 @@ app.post('/api/jobs/:id/apply', requireAuth, requirePremium, async (req, res) =>
 
 app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
   try {
-    const settings = await getOrCreateUserSettings(getUserId(req));
-    if (settings && settings.cookiesJson) {
-      settings.cookiesJson = decryptString(settings.cookiesJson);
+    const rawSettings = await getOrCreateUserSettings(getUserId(req));
+    if (!rawSettings) return res.json(null);
+    if (rawSettings.cookies_json) {
+      rawSettings.cookies_json = decryptString(rawSettings.cookies_json);
     }
-    res.json(settings);
+    // Map DB snake_case -> frontend camelCase
+    res.json({
+      id: rawSettings.id,
+      isActive: rawSettings.is_active ?? false,
+      dailyLimit: rawSettings.daily_limit ?? 10,
+      remoteOnly: rawSettings.remote_only ?? true,
+      includeInternships: rawSettings.include_internships ?? true,
+      autoApplyThreshold: rawSettings.auto_apply_threshold ?? 75,
+      proxyUrl: rawSettings.proxy_url || '',
+      cookiesJson: rawSettings.cookies_json || '',
+      openrouterApiKey: rawSettings.openrouter_api_key || '',
+      openrouterModels: rawSettings.openrouter_models || '',
+      ceoDirective: rawSettings.ceo_directive || '',
+      targetField: rawSettings.target_field || '',
+      experienceLevel: rawSettings.experience_level || '',
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -459,17 +476,47 @@ app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
 app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const payload = { ...req.body };
-    if (payload.cookiesJson) {
-      payload.cookiesJson = encryptString(payload.cookiesJson);
+    // Map frontend camelCase -> DB snake_case
+    const payload: any = {};
+    if (req.body.isActive !== undefined)           payload.is_active = req.body.isActive;
+    if (req.body.dailyLimit !== undefined)         payload.daily_limit = req.body.dailyLimit;
+    if (req.body.remoteOnly !== undefined)         payload.remote_only = req.body.remoteOnly;
+    if (req.body.includeInternships !== undefined) payload.include_internships = req.body.includeInternships;
+    if (req.body.autoApplyThreshold !== undefined) payload.auto_apply_threshold = req.body.autoApplyThreshold;
+    if (req.body.proxyUrl !== undefined)           payload.proxy_url = req.body.proxyUrl;
+    if (req.body.openrouterApiKey !== undefined)   payload.openrouter_api_key = req.body.openrouterApiKey;
+    if (req.body.openrouterModels !== undefined)   payload.openrouter_models = req.body.openrouterModels;
+    if (req.body.ceoDirective !== undefined)       payload.ceo_directive = req.body.ceoDirective;
+    if (req.body.targetField !== undefined)        payload.target_field = req.body.targetField;
+    if (req.body.experienceLevel !== undefined)    payload.experience_level = req.body.experienceLevel;
+    if (req.body.cookiesJson !== undefined) {
+      payload.cookies_json = encryptString(req.body.cookiesJson);
     }
-    const { data: updated } = await supabase
+    // Ensure settings row exists first
+    await getOrCreateUserSettings(userId);
+    const { data: updated, error } = await supabase
       .from('agent_settings')
       .update(payload)
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .select()
       .single();
-    res.json(updated);
+    if (error) throw error;
+    // Return mapped camelCase
+    res.json({
+      id: updated.id,
+      isActive: updated.is_active ?? false,
+      dailyLimit: updated.daily_limit ?? 10,
+      remoteOnly: updated.remote_only ?? true,
+      includeInternships: updated.include_internships ?? true,
+      autoApplyThreshold: updated.auto_apply_threshold ?? 75,
+      proxyUrl: updated.proxy_url || '',
+      cookiesJson: updated.cookies_json ? decryptString(updated.cookies_json) : '',
+      openrouterApiKey: updated.openrouter_api_key || '',
+      openrouterModels: updated.openrouter_models || '',
+      ceoDirective: updated.ceo_directive || '',
+      targetField: updated.target_field || '',
+      experienceLevel: updated.experience_level || '',
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
