@@ -8,7 +8,7 @@ import { generateTextResponse } from './openrouter';
 
 export async function generateColdEmail(jobTitle: string, companyName: string, hrEmail: string, profileDetails: any): Promise<string> {
   try {
-    await logSystem('INFO', `Drafting personalized cold email for ${jobTitle} at ${companyName}`);
+    console.log('INFO', `Drafting personalized cold email for ${jobTitle} at ${companyName}`);
     
     const skills = Array.isArray(profileDetails.skills) ? profileDetails.skills.join(', ') : profileDetails.skills;
     const name = profileDetails.fullName || 'Candidate';
@@ -35,10 +35,10 @@ export async function generateColdEmail(jobTitle: string, companyName: string, h
 
     const result = await generateTextResponse(prompt, 'gemini-1.5-flash');
     
-    await logSystem('SUCCESS', `Successfully drafted cold email for ${companyName}`);
+    console.log('SUCCESS', `Successfully drafted cold email for ${companyName}`);
     return result.trim();
   } catch (error: any) {
-    await logSystem('ERROR', `Failed to draft cold email: ${error.message}`);
+    console.log('ERROR', `Failed to draft cold email: ${error.message}`);
     return `Dear Hiring Team at ${companyName},\n\nI am writing to express my interest in the ${jobTitle} position. With my background in ${profileDetails.skills ? profileDetails.skills.slice(0,2) : 'technology'}, I am confident I can bring value to your team.\n\nI would love to arrange a brief call to discuss this further.\n\nBest regards,\n${profileDetails.fullName || 'Candidate'}`;
   }
 }

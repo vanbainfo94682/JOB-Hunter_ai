@@ -12,7 +12,7 @@ export async function findHREmail(companyName: string, domain?: string): Promise
     // Simulated HR discovery using AI to predict standard corporate email patterns
     // In a real production system, this would call Hunter.io API or Apollo.io API
     
-    await logSystem('INFO', `Starting AI HR Discovery for company: ${companyName}`);
+    console.log('INFO', `Starting AI HR Discovery for company: ${companyName}`);
     
     const prompt = `
       You are an expert recruiter and OSINT analyst.
@@ -29,7 +29,7 @@ export async function findHREmail(companyName: string, domain?: string): Promise
       const cleaned = result.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleaned);
       
-      await logSystem('SUCCESS', `HR Email discovered for ${companyName}: ${parsed.email}`);
+      console.log('SUCCESS', `HR Email discovered for ${companyName}: ${parsed.email}`);
       return { email: parsed.email, confidence: parsed.confidence };
     } catch (e) {
       // Fallback if AI fails to output valid JSON
@@ -38,7 +38,7 @@ export async function findHREmail(companyName: string, domain?: string): Promise
     }
 
   } catch (error: any) {
-    await logSystem('ERROR', `Failed to find HR email for ${companyName}: ${error.message}`);
+    console.log('ERROR', `Failed to find HR email for ${companyName}: ${error.message}`);
     return { email: `talent@${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`, confidence: 'low' };
   }
 }

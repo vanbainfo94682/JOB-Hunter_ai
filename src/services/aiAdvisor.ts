@@ -8,7 +8,7 @@ import { generateTextResponse } from './openrouter';
 
 export async function generateUpskillRoadmap(profileDetails: any, targetJobTitle: string): Promise<string> {
   try {
-    await logSystem('INFO', `Generating upskill roadmap for ${profileDetails.fullName} targeting ${targetJobTitle}`);
+    console.log('INFO', `Generating upskill roadmap for ${profileDetails.fullName} targeting ${targetJobTitle}`);
     
     const skills = Array.isArray(profileDetails.skills) ? profileDetails.skills.join(', ') : profileDetails.skills;
     
@@ -29,7 +29,7 @@ export async function generateUpskillRoadmap(profileDetails: any, targetJobTitle
 
 export async function generateSalaryNegotiation(jobTitle: string, location: string): Promise<string> {
   try {
-    await logSystem('INFO', `Generating salary negotiation script for ${jobTitle}`);
+    console.log('INFO', `Generating salary negotiation script for ${jobTitle}`);
     
     const prompt = `
       Act as an expert Salary Negotiator.

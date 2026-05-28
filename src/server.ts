@@ -158,7 +158,7 @@ app.post('/api/auth/signup', async (req, res) => {
       options: { data: { full_name: fullName } },
     });
     if (error) throw error;
-    await logSystem('SUCCESS', `New user signed up: ${email}`);
+    console.log('SUCCESS', `New user signed up: ${email}`);
     const u = data.user;
     const shapedUser = u ? {
       id: u.id,
@@ -176,7 +176,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     const { email, password } = req.body;
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    await logSystem('INFO', `User logged in: ${email}`);
+    console.log('INFO', `User logged in: ${email}`);
     const u = data.user;
     const shapedUser = u ? {
       id: u.id,
@@ -203,7 +203,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     
     if (error) throw error;
     
-    await logSystem('INFO', `Password reset requested for: ${email}`);
+    console.log('INFO', `Password reset requested for: ${email}`);
     res.json({ message: 'If the email exists, a reset link has been sent.' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -222,7 +222,7 @@ app.post('/api/auth/update-password', requireAuth, async (req, res) => {
     
     if (error) throw error;
     
-    await logSystem('SUCCESS', `Password updated successfully for user ID: ${userId}`);
+    console.log('SUCCESS', `Password updated successfully for user ID: ${userId}`);
     res.json({ message: 'Password updated successfully.' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -538,7 +538,7 @@ app.post('/api/subscription/webhook', async (req, res) => {
       cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
     }, { onConflict: 'userId' });
     
-    await logSystem('SUCCESS', `Webhook: Upgraded user ${userId} to ${planType}`);
+    console.log('SUCCESS', `Webhook: Upgraded user ${userId} to ${planType}`);
     res.json({ message: 'Webhook processed' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -623,7 +623,7 @@ app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
           jobs_hybrid_count: quotas.h,
           jobs_onsite_count: quotas.o
         });
-        await logSystem('SUCCESS', `Payment verified for ${user_email}`);
+        console.log('SUCCESS', `Payment verified for ${user_email}`);
       }
     }
     res.status(200).send('OK');
@@ -680,7 +680,7 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
         status: 'COMPLETED'
       }]);
 
-      await logSystem('SUCCESS', `Verified payment for user ${userId} with transaction ${transactionId}`);
+      console.log('SUCCESS', `Verified payment for user ${userId} with transaction ${transactionId}`);
       res.json({ message: 'Subscription activated!' });
     } else {
       res.status(400).json({ error: 'Payment verification failed. Please check your Transaction ID.' });

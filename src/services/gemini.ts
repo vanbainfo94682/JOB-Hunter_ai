@@ -13,7 +13,7 @@ export async function generateJSONResponse<T>(prompt: string, systemInstruction?
   }
   messages.push({ role: 'user', content: prompt });
 
-  await logSystem('INFO', `Sending structured JSON request to local Ollama (llama3:8b)...`);
+  console.log('INFO', `Sending structured JSON request to local Ollama (llama3:8b)...`);
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -39,7 +39,7 @@ export async function generateJSONResponse<T>(prompt: string, systemInstruction?
     // Parse response cleanly
     return JSON.parse(rawText.trim()) as T;
   } catch (error: any) {
-    await logSystem('ERROR', `Local Ollama JSON generation failed: ${error?.message || error}`);
+    console.log('ERROR', `Local Ollama JSON generation failed: ${error?.message || error}`);
     throw error;
   }
 }
@@ -56,7 +56,7 @@ export async function generateTextResponse(prompt: string, systemInstruction?: s
   }
   messages.push({ role: 'user', content: prompt });
 
-  await logSystem('INFO', `Sending text generation request to local Ollama (llama3:8b)...`);
+  console.log('INFO', `Sending text generation request to local Ollama (llama3:8b)...`);
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -78,7 +78,7 @@ export async function generateTextResponse(prompt: string, systemInstruction?: s
     const data: any = await response.json();
     return data.message?.content || '';
   } catch (error: any) {
-    await logSystem('ERROR', `Local Ollama text generation failed: ${error?.message || error}`);
+    console.log('ERROR', `Local Ollama text generation failed: ${error?.message || error}`);
     throw error;
   }
 }

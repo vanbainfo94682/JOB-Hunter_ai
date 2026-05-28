@@ -77,7 +77,7 @@ async function loadRotationState(userId?: string) {
   // Return early if Gemini is selected
   if (aiProvider === 'GEMINI') {
     if (!settings?.geminiApiKey && !process.env.GEMINI_API_KEY) {
-      logSystem('ERROR', 'Gemini API key not configured.');
+      console.log('ERROR', 'Gemini API key not configured.');
       throw new Error('Gemini API key not configured');
     }
     return { aiProvider, geminiApiKey: settings?.geminiApiKey || process.env.GEMINI_API_KEY, apiKey: null, models: null };
@@ -86,7 +86,7 @@ async function loadRotationState(userId?: string) {
   // OpenRouter flow
   if (!settings?.openrouterApiKey) {
     if (process.env.OPENROUTER_API_KEY) return { aiProvider, apiKey: process.env.OPENROUTER_API_KEY, models: modelRotationState };
-    logSystem('ERROR', 'OpenRouter API key not configured. Add it in Settings.');
+    console.log('ERROR', 'OpenRouter API key not configured. Add it in Settings.');
     throw new Error('OpenRouter API key not configured');
   }
 
@@ -122,7 +122,7 @@ async function loadRotationState(userId?: string) {
 function pickNextModel(models: string[]): { model: string; idx: number } {
   // Reset on fresh cycle
   if (modelRotationState!.failedModels.size >= models.length) {
-    logSystem('INFO', `All ${models.length} models exhausted this cycle. Resetting rotation to 0.`);
+    console.log('INFO', `All ${models.length} models exhausted this cycle. Resetting rotation to 0.`);
     modelRotationState!.failedModels.clear();
     modelRotationState!.idx = 0;
   }
@@ -165,14 +165,14 @@ async function callAI({
   const cacheKey = getCacheKey(prompt, systemPrompt);
   const cached = aiCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
-    logSystem('INFO', '[AI Cache] Cache hit! Saving API tokens.');
+    console.log('INFO', '[AI Cache] Cache hit! Saving API tokens.');
     return cached.response;
   }
 
   const { aiProvider, models, apiKey, geminiApiKey } = await loadRotationState(userId);
 
   if (aiProvider === 'GEMINI') {
-    logSystem('INFO', '[Gemini API] Dispatching request to gemini-2.5-flash');
+    console.log('INFO', '[Gemini API] Dispatching request to gemini-2.5-flash');
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
     
     let parts = [];
@@ -216,7 +216,7 @@ async function callAI({
       continue;
     }
 
-    logSystem('INFO', `[OpenRouter] Model #${idx + 1}/${modelRotationState!.activeModels.length}: ${model}`);
+    console.log('INFO', `[OpenRouter] Model #${idx + 1}/${modelRotationState!.activeModels.length}: ${model}`);
 
     const messages: any[] = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
@@ -249,7 +249,7 @@ async function callAI({
 
       if (!content) throw new Error('OpenRouter returned empty content');
 
-      logSystem('SUCCESS', `[OpenRouter] Model #${idx + 1} responded: ${content.length} chars`);
+      console.log('SUCCESS', `[OpenRouter] Model #${idx + 1} responded: ${content.length} chars`);
 
       const cleaned = content.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim();
       modelRotationState!.failedModels.clear();
@@ -260,11 +260,11 @@ async function callAI({
     } catch (error: any) {
       lastError = error;
       modelRotationState!.failedModels.add(model);
-      logSystem('WARNING', `[OpenRouter] Model #${idx + 1} (${model}) failed. Next...`);
+      console.log('WARNING', `[OpenRouter] Model #${idx + 1} (${model}) failed. Next...`);
     }
   }
 
-  logSystem('ERROR', `[OpenRouter] All ${attempts} models failed. Last error: ${lastError?.message}`);
+  console.log('ERROR', `[OpenRouter] All ${attempts} models failed. Last error: ${lastError?.message}`);
   throw lastError || new Error('All OpenRouter models failed after exhausting the pool');
 }
 
@@ -278,7 +278,7 @@ async function callAI({
  * userId is optional — when provided the per-user settings/API-key slot is used.
  */
 export async function generateJSONResponse<T>(prompt: string, systemInstruction?: string, userId?: string): Promise<T> {
-  logSystem('INFO', 'Sending structured JSON request to AI Provider...');
+  console.log('INFO', 'Sending structured JSON request to AI Provider...');
   const raw = await callAI({
     prompt,
     systemPrompt: systemInstruction,
@@ -295,7 +295,7 @@ export async function generateJSONResponse<T>(prompt: string, systemInstruction?
  * userId is optional — when provided the per-user settings/API-key slot is used.
  */
 export async function generateTextResponse(prompt: string, systemInstruction?: string, userId?: string): Promise<string> {
-  logSystem('INFO', 'Sending text generation request to AI Provider...');
+  console.log('INFO', 'Sending text generation request to AI Provider...');
   return callAI({
     prompt,
     systemPrompt: systemInstruction,

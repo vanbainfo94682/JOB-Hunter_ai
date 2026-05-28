@@ -31,7 +31,7 @@ export async function extractTextFromPdf(input: string | Buffer): Promise<string
     const data = await pdf(dataBuffer);
     return data.text;
   } catch (error: any) {
-    await logSystem('ERROR', `Failed to parse PDF file content: ${error?.message || error}`);
+    console.log('ERROR', `Failed to parse PDF file content: ${error?.message || error}`);
     throw new Error(`PDF parsing failed: ${error?.message || error}`);
   }
 }
@@ -80,7 +80,7 @@ ${rawText}
     const structuredProfile = await generateJSONResponse<ParsedResume>(prompt, systemInstruction, userId);
     return structuredProfile;
   } catch (error: any) {
-    await logSystem('ERROR', `AI Resume Parsing failed: ${error?.message || error}`);
+    console.log('ERROR', `AI Resume Parsing failed: ${error?.message || error}`);
     throw new Error(`AI Parsing failed: ${error?.message || error}`);
   }
 }
