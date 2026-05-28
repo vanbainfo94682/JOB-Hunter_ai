@@ -378,7 +378,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       user_id: userId,
       full_name: req.body.full_name || req.body.fullName || existing?.full_name || 'User',
       phone: req.body.phone !== undefined ? req.body.phone : (existing?.phone || null),
-      professional_email: req.body.professional_email || existing?.professional_email || null,
+      professional_email: req.body.professional_email || existing?.professional_email || '',
       resume_url: req.body.resume_url || req.body.resumePath || existing?.resume_url || '',
       raw_resume_text: req.body.raw_resume_text || req.body.rawResumeText || existing?.raw_resume_text || '',
       target_titles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : (existing?.target_titles || '[]'),

@@ -289,7 +289,19 @@ export async function generateJSONResponse<T>(prompt: string, systemInstruction?
     maxTokens: 4096,
     userId,
   });
-  return JSON.parse(raw) as T;
+  let jsonStr = raw.trim();
+  const mdMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (mdMatch && mdMatch[1]) {
+    jsonStr = mdMatch[1].trim();
+  }
+  
+  try {
+    return JSON.parse(jsonStr) as T;
+  } catch (error: any) {
+    console.log('ERROR', `Failed to parse JSON response: ${error?.message || error}`);
+    console.log('RAW OUTPUT:', raw);
+    throw new Error('AI returned invalid JSON format');
+  }
 }
 
 /**

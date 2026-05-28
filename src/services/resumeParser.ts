@@ -43,7 +43,9 @@ export async function extractTextFromPdf(input: string | Buffer): Promise<string
 export async function parseResumeWithAI(rawText: string, userId?: string): Promise<ParsedResume> {
   const systemInstruction = `You are an expert ATS (Applicant Tracking System) parser and CV auditor. 
 Your objective is to read raw text from a candidate resume and map it strictly to the provided JSON structure. 
-Be accurate, clean, and make sure to infer professional skills, structured work history, education history, and generate 5 highly optimized target search job titles (e.g. "Remote Full Stack Engineer", "Senior React Developer") based on their background.
+Be highly fault-tolerant. Even if the resume is poorly formatted, fragmented, or in an unusual layout, do your absolute best to extract ANY available data.
+Infer professional skills, structured work history, education history, and generate 5 highly optimized target search job titles (e.g. "Remote Full Stack Engineer", "Senior React Developer") based on their background.
+If any specific information is entirely missing, use empty strings ("") or empty arrays ([]) instead of null. 
 Return ONLY valid JSON complying with the required schema. Do not write markdown text other than JSON.`;
 
   const prompt = `Please parse the following raw resume text and output a JSON object matching this structure:
