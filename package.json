@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "node node_modules/playwright/cli.js install chromium && npx prisma generate && npx tsc",
+    "build": "node node_modules/playwright/cli.js install chromium && node node_modules/prisma/build/index.js generate && node node_modules/typescript/bin/tsc",
     "start": "node dist/server.js",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma db push"
