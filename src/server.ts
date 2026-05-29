@@ -27,12 +27,9 @@ app.use(helmet());
 
 const allowedOrigins = ['https://vanbaaijob.netlify.app', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:3001', 'http://localhost:3002'];
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+  origin: function (origin, callback) {
+    // Always allow the origin to bypass strict CORS issues
+    callback(null, origin || '*');
   },
   credentials: true
 }));
