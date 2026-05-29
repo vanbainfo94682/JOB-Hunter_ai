@@ -672,14 +672,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
   }
 });
 
-        console.log('SUCCESS', `Payment verified for ${user_email}`);
-      }
-    }
-    res.status(200).send('OK');
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+
 
 // ── Secure Payment Verification ───────────────────────────────
   // Secure Payment Verification
