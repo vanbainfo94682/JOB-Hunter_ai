@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const res = await prisma.\('SELECT column_name FROM information_schema.columns WHERE table_name = ''user_profiles'''); console.log(res); } main().finally(() => prisma.\());

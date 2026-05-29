@@ -161,7 +161,7 @@ app.post('/api/auth/signup', async (req, res) => {
     const shapedUser = u ? {
       id: u.id,
       email: u.email ?? email,
-      full_name: (u.user_metadata?.full_name ?? fullName ?? ''),
+      fullName: (u.user_metadata?.full_name ?? fullName ?? ''),
     } : null;
     res.json({ message: 'Signup successful.', user: shapedUser, accessToken: data.session?.access_token });
   } catch (error: any) {
@@ -179,7 +179,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     const shapedUser = u ? {
       id: u.id,
       email: u.email ?? email,
-      full_name: (u.user_metadata?.full_name ?? u.user_metadata?.name ?? email),
+      fullName: (u.user_metadata?.full_name ?? u.user_metadata?.name ?? email),
     } : null;
     res.json({ message: 'Login successful.', user: shapedUser, accessToken: data.session?.access_token });
   } catch (error: any) {
@@ -241,7 +241,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
         skills: JSON.parse(profile.skills || '[]'),
         experience: JSON.parse(profile.experience || '[]'),
         education: JSON.parse(profile.education || '[]'),
-        target_titles: JSON.parse(profile.target_titles || '[]'),
+        targetTitles: JSON.parse(profile.targetTitles || '[]'),
       } : null,
       subscription: subs && subs.length > 0 ? subs[0] : null,
       subscriptions: subs || [],
@@ -259,34 +259,31 @@ app.post('/api/resume/upload', requireAuth, upload.single('resume'), async (req,
     const parsedData = await parseResumeWithAI(rawText, userId);
 
     // Fetch existing profile to preserve IDs and custom columns
-    const { data: existing } = await supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle();
+    const { data: existing } = await supabase.from('user_profiles').select('*').eq('userId', userId).maybeSingle();
 
     const upsertPayload: any = {
-      user_id: userId,
-      full_name: parsedData.fullName || existing?.full_name || 'User',
+      userId: userId,
+      fullName: parsedData.fullName || existing?.fullName || 'User',
       phone: parsedData.phone || existing?.phone || null,
       professional_email: parsedData.email || existing?.professional_email || '',
       skills: JSON.stringify(parsedData.skills),
       experience: JSON.stringify(parsedData.experience),
       education: JSON.stringify(parsedData.education),
-      raw_resume_text: rawText,
-      resume_url: existing?.resume_url || '',
-      target_titles: JSON.stringify(parsedData.targetTitles),
+      rawResumeText: rawText,
+      resumePath: existing?.resumePath || '',
+      targetTitles: JSON.stringify(parsedData.targetTitles),
+      dob: existing?.dob || '1970-01-01',
+      city: existing?.city || '',
+      state: existing?.state || '',
+      current_institution: existing?.current_institution || '',
+      onboarding_completed: existing?.onboarding_completed || false,
     };
 
     if (existing?.id) upsertPayload.id = existing.id;
-    if (!existing) {
-       // Fallbacks for NOT NULL columns if this is the first time creating
-       upsertPayload.dob = '1970-01-01';
-       upsertPayload.city = '';
-       upsertPayload.state = '';
-       upsertPayload.current_institution = '';
-       upsertPayload.onboarding_completed = false;
-    }
 
     const { data: profile, error } = await supabase
       .from('user_profiles')
-      .upsert(upsertPayload, { onConflict: 'user_id' })
+      .upsert(upsertPayload, { onConflict: 'userId' })
       .select()
       .single();
 
@@ -306,7 +303,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
     const { data: profile, error: fetchError } = await supabase
       .from('user_profiles')
       .select('*, user:app_users(email)')
-      .eq('user_id', userId)
+      .eq('userId', userId)
       .maybeSingle();
       
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -330,7 +327,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
 
     res.json({
       ...profile,
-      fullName: profile.full_name || '',
+      fullName: profile.fullName || '',
       email: profile.user?.email || '',
       onboarding_completed: extraData.onboardingCompleted || false,
       dob: extraData.dob || '',
@@ -340,7 +337,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
       skills: profile.skills ? JSON.parse(profile.skills) : [],
       experience: profile.experience ? JSON.parse(profile.experience) : [],
       education: eduList,
-      target_titles: profile.target_titles ? JSON.parse(profile.target_titles) : [],
+      targetTitles: profile.targetTitles ? JSON.parse(profile.targetTitles) : [],
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -355,7 +352,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     const { data: existing } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('userId', userId)
       .maybeSingle();
     
     // Merge education JSON
@@ -391,13 +388,13 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     });
 
     const updatePayload: any = {
-      user_id: userId,
-      full_name: req.body.full_name || req.body.fullName || existing?.full_name || 'User',
+      userId: userId,
+      fullName: req.body.fullName || req.body.fullName || existing?.fullName || 'User',
       phone: req.body.phone !== undefined ? req.body.phone : (existing?.phone || null),
       professional_email: req.body.professional_email || existing?.professional_email || '',
-      resume_url: req.body.resume_url || req.body.resumePath || existing?.resume_url || '',
-      raw_resume_text: req.body.raw_resume_text || req.body.rawResumeText || existing?.raw_resume_text || '',
-      target_titles: req.body.target_titles ? JSON.stringify(req.body.target_titles) : (existing?.target_titles || '[]'),
+      resumePath: req.body.resumePath || req.body.resumePath || existing?.resumePath || '',
+      rawResumeText: req.body.rawResumeText || req.body.rawResumeText || existing?.rawResumeText || '',
+      targetTitles: req.body.targetTitles ? JSON.stringify(req.body.targetTitles) : (existing?.targetTitles || '[]'),
       skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : (existing?.skills || '[]'),
       experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : (existing?.experience || '[]'),
       education: packedEducation
@@ -407,7 +404,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     // Upsert using Supabase to bypass Prisma issues
     const { data: updated, error: upsertError } = await supabase
       .from('user_profiles')
-      .upsert(updatePayload, { onConflict: 'user_id' })
+      .upsert(updatePayload, { onConflict: 'userId' })
       .select()
       .single();
       
@@ -434,12 +431,12 @@ app.get('/api/jobs', requireAuth, requirePremium, async (req, res) => {
   try {
     const userId = getUserId(req);
     const sub = await getOrCreateSubscription(userId);
-    const limit = sub.jobs_visible || 10;
+    const limit = sub.jobsVisible || 10;
 
     const { data: jobs } = await supabase
       .from('jobs')
       .select('*')
-      .or(`user_id.eq.${userId},user_id.is.null`)
+      .or(`userId.eq.${userId},userId.is.null`)
       .order('match_score', { ascending: false })
       .limit(limit);
 
@@ -467,24 +464,24 @@ app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
   try {
     const rawSettings = await getOrCreateUserSettings(getUserId(req));
     if (!rawSettings) return res.json(null);
-    if (rawSettings.cookies_json) {
-      rawSettings.cookies_json = decryptString(rawSettings.cookies_json);
+    if (rawSettings.cookiesJson) {
+      rawSettings.cookiesJson = decryptString(rawSettings.cookiesJson);
     }
     // Map DB snake_case -> frontend camelCase
     res.json({
       id: rawSettings.id,
-      isActive: rawSettings.is_active ?? false,
-      dailyLimit: rawSettings.daily_limit ?? 10,
-      remoteOnly: rawSettings.remote_only ?? true,
-      includeInternships: rawSettings.include_internships ?? true,
-      autoApplyThreshold: rawSettings.auto_apply_threshold ?? 75,
-      proxyUrl: rawSettings.proxy_url || '',
-      cookiesJson: rawSettings.cookies_json || '',
-      openrouterApiKey: rawSettings.openrouter_api_key || '',
-      openrouterModels: rawSettings.openrouter_models || '',
-      ceoDirective: rawSettings.ceo_directive || '',
-      targetField: rawSettings.target_field || '',
-      experienceLevel: rawSettings.experience_level || '',
+      isActive: rawSettings.isActive ?? false,
+      dailyLimit: rawSettings.dailyLimit ?? 10,
+      remoteOnly: rawSettings.remoteOnly ?? true,
+      includeInternships: rawSettings.includeInternships ?? true,
+      autoApplyThreshold: rawSettings.autoApplyThreshold ?? 75,
+      proxyUrl: rawSettings.proxyUrl || '',
+      cookiesJson: rawSettings.cookiesJson || '',
+      openrouterApiKey: rawSettings.openrouterApiKey || '',
+      openrouterModels: rawSettings.openrouterModels || '',
+      ceoDirective: rawSettings.ceoDirective || '',
+      targetField: rawSettings.targetField || '',
+      experienceLevel: rawSettings.experienceLevel || '',
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -496,44 +493,44 @@ app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
     const userId = getUserId(req);
     // Map frontend camelCase -> DB snake_case
     const payload: any = {};
-    if (req.body.isActive !== undefined)           payload.is_active = req.body.isActive;
-    if (req.body.dailyLimit !== undefined)         payload.daily_limit = req.body.dailyLimit;
-    if (req.body.remoteOnly !== undefined)         payload.remote_only = req.body.remoteOnly;
-    if (req.body.includeInternships !== undefined) payload.include_internships = req.body.includeInternships;
-    if (req.body.autoApplyThreshold !== undefined) payload.auto_apply_threshold = req.body.autoApplyThreshold;
-    if (req.body.proxyUrl !== undefined)           payload.proxy_url = req.body.proxyUrl;
-    if (req.body.openrouterApiKey !== undefined)   payload.openrouter_api_key = req.body.openrouterApiKey;
-    if (req.body.openrouterModels !== undefined)   payload.openrouter_models = req.body.openrouterModels;
-    if (req.body.ceoDirective !== undefined)       payload.ceo_directive = req.body.ceoDirective;
-    if (req.body.targetField !== undefined)        payload.target_field = req.body.targetField;
-    if (req.body.experienceLevel !== undefined)    payload.experience_level = req.body.experienceLevel;
+    if (req.body.isActive !== undefined)           payload.isActive = req.body.isActive;
+    if (req.body.dailyLimit !== undefined)         payload.dailyLimit = req.body.dailyLimit;
+    if (req.body.remoteOnly !== undefined)         payload.remoteOnly = req.body.remoteOnly;
+    if (req.body.includeInternships !== undefined) payload.includeInternships = req.body.includeInternships;
+    if (req.body.autoApplyThreshold !== undefined) payload.autoApplyThreshold = req.body.autoApplyThreshold;
+    if (req.body.proxyUrl !== undefined)           payload.proxyUrl = req.body.proxyUrl;
+    if (req.body.openrouterApiKey !== undefined)   payload.openrouterApiKey = req.body.openrouterApiKey;
+    if (req.body.openrouterModels !== undefined)   payload.openrouterModels = req.body.openrouterModels;
+    if (req.body.ceoDirective !== undefined)       payload.ceoDirective = req.body.ceoDirective;
+    if (req.body.targetField !== undefined)        payload.targetField = req.body.targetField;
+    if (req.body.experienceLevel !== undefined)    payload.experienceLevel = req.body.experienceLevel;
     if (req.body.cookiesJson !== undefined) {
-      payload.cookies_json = encryptString(req.body.cookiesJson);
+      payload.cookiesJson = encryptString(req.body.cookiesJson);
     }
     // Ensure settings row exists first
     await getOrCreateUserSettings(userId);
     const { data: updated, error } = await supabase
       .from('agent_settings')
       .update(payload)
-      .eq('user_id', userId)
+      .eq('userId', userId)
       .select()
       .single();
     if (error) throw error;
     // Return mapped camelCase
     res.json({
       id: updated.id,
-      isActive: updated.is_active ?? false,
-      dailyLimit: updated.daily_limit ?? 10,
-      remoteOnly: updated.remote_only ?? true,
-      includeInternships: updated.include_internships ?? true,
-      autoApplyThreshold: updated.auto_apply_threshold ?? 75,
-      proxyUrl: updated.proxy_url || '',
-      cookiesJson: updated.cookies_json ? decryptString(updated.cookies_json) : '',
-      openrouterApiKey: updated.openrouter_api_key || '',
-      openrouterModels: updated.openrouter_models || '',
-      ceoDirective: updated.ceo_directive || '',
-      targetField: updated.target_field || '',
-      experienceLevel: updated.experience_level || '',
+      isActive: updated.isActive ?? false,
+      dailyLimit: updated.dailyLimit ?? 10,
+      remoteOnly: updated.remoteOnly ?? true,
+      includeInternships: updated.includeInternships ?? true,
+      autoApplyThreshold: updated.autoApplyThreshold ?? 75,
+      proxyUrl: updated.proxyUrl || '',
+      cookiesJson: updated.cookiesJson ? decryptString(updated.cookiesJson) : '',
+      openrouterApiKey: updated.openrouterApiKey || '',
+      openrouterModels: updated.openrouterModels || '',
+      ceoDirective: updated.ceoDirective || '',
+      targetField: updated.targetField || '',
+      experienceLevel: updated.experienceLevel || '',
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -557,13 +554,13 @@ app.post('/api/subscription/subscribe', requireAuth, async (req, res) => {
     const days = planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : 60;
     
     const { data: sub } = await supabase.from('subscriptions').upsert({
-      user_id: userId,
-      plan_type: planType,
+      userId: userId,
+      planType: planType,
       status: 'ACTIVE',
-      jobs_visible: PLAN_MAP[planType],
-      jobs_count: 0,
-      cycle_start: new Date().toISOString(),
-      cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+      jobsVisible: PLAN_MAP[planType],
+      jobsCount: 0,
+      cycleStart: new Date().toISOString(),
+      cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
     }).select().single();
 
     res.json({ message: 'Subscribed.', subscription: sub });
@@ -596,11 +593,11 @@ app.post('/api/subscription/webhook', async (req, res) => {
     const PLAN_MAP: Record<string, number> = { WEEKLY: 10, MONTHLY: 25, TWO_MONTH: 35 };
 
     await supabase.from('subscriptions').upsert({
-      user_id: userId,
-      plan_type: planType,
-      jobs_visible: PLAN_MAP[planType] || 10,
-      cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
-    }, { onConflict: 'user_id' });
+      userId: userId,
+      planType: planType,
+      jobsVisible: PLAN_MAP[planType] || 10,
+      cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+    }, { onConflict: 'userId' });
     
     console.log('SUCCESS', `Webhook: Upgraded user ${userId} to ${planType}`);
     res.json({ message: 'Webhook processed' });
@@ -624,7 +621,7 @@ app.post('/api/agent/find-hr', requireAuth, requirePremium, async (req, res) => 
     const userId = getUserId(req);
     const sub = await getOrCreateSubscription(userId);
     
-    if (sub.plan_type === 'WEEKLY') {
+    if (sub.planType === 'WEEKLY') {
       return res.status(403).json({ error: 'HR Email Discovery is available on Monthly plan and above. Please upgrade!' });
     }
 
@@ -643,7 +640,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
     
     // Check subscription plan limits
     const sub = await getOrCreateSubscription(userId);
-    if (sub.plan_type === 'WEEKLY' || sub.plan_type === 'MONTHLY') {
+    if (sub.planType === 'WEEKLY' || sub.planType === 'MONTHLY') {
       return res.status(403).json({ error: 'AI Cold Email Drafting is locked on Weekly/Monthly Plans. Upgrade to Quarterly or VIP to unlock this feature!' });
     }
 
@@ -651,7 +648,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
     const { data: profile } = await supabase.from('user_profiles').select('*').eq('userId', userId).maybeSingle();
     
     const parsedProfile = profile ? {
-      full_name: profile.full_name,
+      fullName: profile.fullName,
       skills: JSON.parse(profile.skills || '[]')
     } : {};
 
@@ -665,24 +662,24 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 // Cosmofeed Webhook
 app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
   try {
-    const { order_id, user_email, status, plan_type } = req.body;
+    const { order_id, user_email, status, planType } = req.body;
     if (status === 'COMPLETED') {
       const { data: user } = await supabase.from('app_users').select('id').eq('email', user_email).single();
       if (user) {
-        const days = plan_type === 'WEEKLY' ? 7 : plan_type === 'MONTHLY' ? 30 : plan_type === 'TWO_MONTH' ? 60 : 90;
+        const days = planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : planType === 'TWO_MONTH' ? 60 : 90;
         const quotas = {
           WEEKLY: { r: 10, h: 10, o: 10 },
           MONTHLY: { r: 15, h: 15, o: 15 },
           TWO_MONTH: { r: 25, h: 25, o: 25 },
           THREE_MONTH: { r: 35, h: 35, o: 35 }
-        }[plan_type as 'WEEKLY'|'MONTHLY'|'TWO_MONTH'|'THREE_MONTH'] || { r: 10, h: 10, o: 10 };
+        }[planType as 'WEEKLY'|'MONTHLY'|'TWO_MONTH'|'THREE_MONTH'] || { r: 10, h: 10, o: 10 };
 
         await supabase.from('subscriptions').upsert({
-          user_id: user.id,
-          plan_type: plan_type,
+          userId: user.id,
+          planType: planType,
           status: 'ACTIVE',
-          cycle_start: new Date().toISOString(),
-          cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+          cycleStart: new Date().toISOString(),
+          cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
           jobs_remote_count: quotas.r,
           jobs_hybrid_count: quotas.h,
           jobs_onsite_count: quotas.o
@@ -706,7 +703,7 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
     const { data: existingPayment } = await supabase
       .from('payments')
       .select('id')
-      .eq('razorpay_order_id', transactionId) // Using this field for Cosmofeed Order ID
+      .eq('razorpayOrderId', transactionId) // Using this field for Cosmofeed Order ID
       .maybeSingle();
 
     if (existingPayment) return res.status(400).json({ error: 'Transaction ID already used.' });
@@ -725,11 +722,11 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
       
       // Update Subscription
       await supabase.from('subscriptions').upsert({
-        user_id: userId,
-        plan_type: verification.plan,
+        userId: userId,
+        planType: verification.plan,
         status: 'ACTIVE',
-        cycle_start: new Date().toISOString(),
-        cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+        cycleStart: new Date().toISOString(),
+        cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
         jobs_remote_count: quotas.r,
         jobs_hybrid_count: quotas.h,
         jobs_onsite_count: quotas.o
@@ -737,10 +734,10 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
 
       // Record Payment
       await supabase.from('payments').insert([{
-        user_id: userId,
+        userId: userId,
         amount: 0, // Recorded via scraper
-        plan_type: verification.plan,
-        razorpay_order_id: transactionId,
+        planType: verification.plan,
+        razorpayOrderId: transactionId,
         status: 'COMPLETED'
       }]);
 
