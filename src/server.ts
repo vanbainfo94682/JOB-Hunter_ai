@@ -801,13 +801,20 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
   app.get('/api/admin/users', requireAuth, async (req, res) => {
     try {
       if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
-      
-      const { data: users, error } = await supabase
-        .from('app_users')
-        .select('*, subscriptions(*), user_profiles(*), payments(*)');
-        
-      if (error) throw error;
-      res.json({ users });
+            const { data: users, error } = await supabase
+          .from('app_users')
+          .select('*, subscriptions(*), user_profiles(*)');
+          
+        if (error) throw error;
+
+        // Fetch payments manually because of missing explicit foreign key
+        const { data: allPayments } = await supabase.from('payments').select('*');
+        const usersWithPayments = users?.map((u: any) => ({
+          ...u,
+          payments: allPayments?.filter((p: any) => p.userId === u.id || p.user_email === u.email) || []
+        }));
+
+        res.json({ users: usersWithPayments });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
