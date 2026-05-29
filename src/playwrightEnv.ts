@@ -3,9 +3,5 @@ import path from 'path';
 
 dotenv.config();
 
-const browserCachePath = path.resolve(__dirname, '..', '..', '.playwright-browsers');
-if (!process.env.PLAYWRIGHT_BROWSERS_PATH) {
-  process.env.PLAYWRIGHT_BROWSERS_PATH = browserCachePath;
-}
-
-console.log('Playwright browser path set to:', process.env.PLAYWRIGHT_BROWSERS_PATH);
+// Removed custom browser path override to allow Playwright to use its default global cache path,
+// which matches where 'npx playwright install' downloads browsers by default on Render.
