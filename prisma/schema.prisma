@@ -143,12 +143,19 @@ model AgentSettings {
 }
 
 model SystemLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  level     String
-  message   String   @db.Text
-  timestamp DateTime @default(now())
+    id        String   @id @default(uuid()) @db.Uuid
+    level     String   // INFO, WARNING, ERROR, CRITICAL
+    message   String
+    metadata  Json?    // Context about the error
+    timestamp DateTime @default(now())
 
-  @@map("system_logs")
+    @@map("system_logs")
+}
+
+model SystemConfig {
+    key       String   @id
+    value     String
+    updatedAt DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────────────
