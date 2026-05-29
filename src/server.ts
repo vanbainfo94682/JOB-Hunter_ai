@@ -840,7 +840,7 @@ app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
       
       const { data: users, error } = await supabase
         .from('app_users')
-        .select('*, subscriptions(*), user_profiles(*)');
+        .select('*, subscriptions(*), user_profiles(*), payments(*)');
         
       if (error) throw error;
       res.json({ users });
