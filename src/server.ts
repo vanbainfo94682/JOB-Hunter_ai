@@ -40,6 +40,23 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 
+  // Global Maintenance Mode Middleware
+  app.use(async (req, res, next) => {
+    // Allow admin and status endpoints
+    if (req.path.startsWith('/api/admin') || req.path === '/api/system/status') {
+      return next();
+    }
+    try {
+      const { data } = await supabase.from('system_config').select('value').eq('key', 'maintenanceMode').maybeSingle();
+      if (data?.value === 'true') {
+        return res.status(503).json({ error: 'Service is temporarily down for maintenance. Please check back soon.' });
+      }
+    } catch (e) {
+      // Ignore errors so the app doesn't crash if DB fails
+    }
+    next();
+  });
+
 // API Rate Limiting: 500 requests per 15 minutes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
