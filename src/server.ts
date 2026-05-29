@@ -851,6 +851,81 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
     }
   });
 
+  // User submits Cosmofeed transaction ID after payment
+  app.post('/api/user/submit-payment', requireAuth, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      
+      const { orderId, planType } = req.body;
+      if (!orderId) return res.status(400).json({ error: 'Order ID is required' });
+
+      // Create a pending payment record
+      const { error } = await supabase.from('payments').insert({
+        userId: userId,
+        user_email: (req as any).user?.email || 'unknown',
+        razorpayOrderId: orderId, // using this field for Cosmofeed Order ID
+        amount: 0, // amount can be verified by admin later
+        status: 'PENDING',
+        planType: planType || 'WEEKLY'
+      });
+
+      if (error) throw error;
+      res.json({ message: 'Payment submitted for admin approval.' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin approves a pending payment
+  app.post('/api/admin/payments/approve', requireAuth, async (req, res) => {
+    try {
+      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      
+      const { paymentId, userId, planType } = req.body;
+      const plan = planType || 'WEEKLY';
+      const days = plan === 'WEEKLY' ? 7 : plan === 'TWO_MONTH' ? 60 : 90;
+      
+      // Calculate quotas
+      const quotas = ({
+        WEEKLY: { r: 10, h: 10, o: 10 },
+        TWO_MONTH: { r: 25, h: 25, o: 25 },
+        THREE_MONTH: { r: 35, h: 35, o: 35 }
+      } as Record<string, { r: number, h: number, o: number }>)[plan] || { r: 10, h: 10, o: 10 };
+
+      // Update payment status to COMPLETED
+      await supabase.from('payments').update({ status: 'COMPLETED' }).eq('id', paymentId);
+
+      // Create/Update subscription logic matching manual approval time
+      await supabase.from('subscriptions').upsert({
+        userId: userId,
+        planType: plan,
+        status: 'ACTIVE',
+        cycleStart: new Date().toISOString(),
+        cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+        jobs_remote_count: quotas.r,
+        jobs_hybrid_count: quotas.h,
+        jobs_onsite_count: quotas.o
+      });
+
+      res.json({ success: true, message: 'Payment approved and subscription activated.' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin rejects a pending payment
+  app.post('/api/admin/payments/reject', requireAuth, async (req, res) => {
+    try {
+      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      const { paymentId } = req.body;
+      await supabase.from('payments').update({ status: 'FAILED' }).eq('id', paymentId);
+      res.json({ success: true, message: 'Payment rejected.' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.listen(PORT, () => {
   console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
 });
