@@ -14,7 +14,6 @@ import { applyToJob } from './services/agent/applier';
 import { calculateJobMatch } from './services/agent/matcher';
 import { OPENROUTER_MODELS } from './services/openrouter';
 import { getOrCreateUserSettings, getOrCreateSubscription } from './services/subscriptionService';
-import { verifyCosmofeedPayment } from './services/paymentVerifier';
 import { findHREmail } from './services/hrFinder';
 import { generateColdEmail } from './services/emailGenerator';
 import { encryptString, decryptString } from './utils/crypto';
@@ -676,31 +675,6 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
   }
 });
 
-// Cosmofeed Webhook
-app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
-  try {
-    const { order_id, user_email, status, planType } = req.body;
-    if (status === 'COMPLETED') {
-      const { data: user } = await supabase.from('app_users').select('id').eq('email', user_email).single();
-      if (user) {
-        const days = planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : planType === 'TWO_MONTH' ? 60 : 90;
-        const quotas = {
-          WEEKLY: { r: 10, h: 10, o: 10 },
-          MONTHLY: { r: 15, h: 15, o: 15 },
-          TWO_MONTH: { r: 25, h: 25, o: 25 },
-          THREE_MONTH: { r: 35, h: 35, o: 35 }
-        }[planType as 'WEEKLY'|'MONTHLY'|'TWO_MONTH'|'THREE_MONTH'] || { r: 10, h: 10, o: 10 };
-
-        await supabase.from('subscriptions').upsert({
-          userId: user.id,
-          planType: planType,
-          status: 'ACTIVE',
-          cycleStart: new Date().toISOString(),
-          cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
-          jobs_remote_count: quotas.r,
-          jobs_hybrid_count: quotas.h,
-          jobs_onsite_count: quotas.o
-        });
         console.log('SUCCESS', `Payment verified for ${user_email}`);
       }
     }
