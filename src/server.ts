@@ -775,12 +775,12 @@ app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
 
       const plan = planType || payment.planType || 'MONTHLY';
       const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : 90;
-      const quotas = {
+      const quotas = ({
         WEEKLY: { r: 10, h: 10, o: 10 },
         MONTHLY: { r: 15, h: 15, o: 15 },
         TWO_MONTH: { r: 25, h: 25, o: 25 },
         THREE_MONTH: { r: 35, h: 35, o: 35 }
-      }[plan] || { r: 10, h: 10, o: 10 };
+      } as Record<string, { r: number, h: number, o: number }>)[plan] || { r: 10, h: 10, o: 10 };
       
       await supabase.from('subscriptions').upsert({
         userId: payment.userId,
@@ -856,12 +856,12 @@ app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
       const { userId, planType } = req.body;
       const plan = planType || 'MONTHLY';
       const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : 90;
-      const quotas = {
+      const quotas = ({
         WEEKLY: { r: 10, h: 10, o: 10 },
         MONTHLY: { r: 15, h: 15, o: 15 },
         TWO_MONTH: { r: 25, h: 25, o: 25 },
         THREE_MONTH: { r: 35, h: 35, o: 35 }
-      }[plan] || { r: 10, h: 10, o: 10 };
+      } as Record<string, { r: number, h: number, o: number }>)[plan] || { r: 10, h: 10, o: 10 };
       
       await supabase.from('subscriptions').upsert({
         userId: userId,
