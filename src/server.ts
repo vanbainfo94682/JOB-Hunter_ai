@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(helmet());
 
-const allowedOrigins = ['https://vanbaaijob.netlify.app', 'http://localhost:3000', 'http://localhost:5173'];
+const allowedOrigins = ['https://vanbaaijob.netlify.app', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:3001', 'http://localhost:3002'];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
