@@ -877,21 +877,21 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
     }
   });
 
-  // Admin approves a pending payment
-  app.post('/api/admin/payments/approve', requireAuth, async (req, res) => {
-    try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
-      
-      const { paymentId, userId, planType } = req.body;
-      const plan = planType || 'WEEKLY';
-      const days = plan === 'WEEKLY' ? 7 : plan === 'TWO_MONTH' ? 60 : 90;
-      
-      // Calculate quotas
-      const quotas = ({
-        WEEKLY: { r: 10, h: 10, o: 10 },
-        TWO_MONTH: { r: 25, h: 25, o: 25 },
-        THREE_MONTH: { r: 35, h: 35, o: 35 }
-      } as Record<string, { r: number, h: number, o: number }>)[plan] || { r: 10, h: 10, o: 10 };
+      app.post('/api/admin/payments/approve', requireAuth, async (req, res) => {
+        try {
+          if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+          
+          const { paymentId, userId, planType } = req.body;
+          const plan = planType || 'WEEKLY';
+          const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : 90;
+          
+          // Calculate quotas
+          const quotas = ({
+            WEEKLY: { r: 10, h: 10, o: 10 },
+            MONTHLY: { r: 15, h: 15, o: 15 },
+            TWO_MONTH: { r: 25, h: 25, o: 25 },
+            THREE_MONTH: { r: 35, h: 35, o: 35 }
+          } as Record<string, { r: number, h: number, o: number }>)[plan] || { r: 10, h: 10, o: 10 };
 
       // Update payment status to COMPLETED
       await supabase.from('payments').update({ status: 'COMPLETED' }).eq('id', paymentId);
