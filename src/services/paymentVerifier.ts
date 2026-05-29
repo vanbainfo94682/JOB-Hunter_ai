@@ -46,7 +46,7 @@ export async function verifyCosmofeedPayment(orderId: string): Promise<{ success
       }
       if (!planType) {
         const fullBody = await page.textContent('body').catch(() => '');
-        const lowerBody = fullBody.toLowerCase();
+        const lowerBody = (fullBody || '').toLowerCase();
         planType = lowerBody.includes('weekly') ? 'WEEKLY' : 
                    lowerBody.includes('monthly') ? 'MONTHLY' : 
                    lowerBody.includes('quarterly') || lowerBody.includes('two') ? 'TWO_MONTH' : 'WEEKLY'; // default to weekly if not found
