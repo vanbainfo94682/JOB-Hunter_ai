@@ -694,36 +694,80 @@ app.post('/api/payments/cosmofeed/webhook', async (req, res) => {
 });
 
 // ── Secure Payment Verification ───────────────────────────────
-app.post('/api/payments/verify', requireAuth, async (req, res) => {
-  try {
-    const { transactionId } = req.body;
-    const userId = getUserId(req);
+  // Secure Payment Verification
+  app.post('/api/payments/verify', requireAuth, async (req, res) => {
+    try {
+      const { transactionId } = req.body;
+      const userId = getUserId(req);
 
-    // 1. Anti-Replay Check: Ensure ID hasn't been used before
-    const { data: existingPayment } = await supabase
-      .from('payments')
-      .select('id')
-      .eq('razorpayOrderId', transactionId) // Using this field for Cosmofeed Order ID
-      .maybeSingle();
+      if (!transactionId || transactionId.trim().length < 5) {
+        return res.status(400).json({ error: 'Invalid transaction ID format.' });
+      }
 
-    if (existingPayment) return res.status(400).json({ error: 'Transaction ID already used.' });
+      const { data: existingPayment } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('razorpayOrderId', transactionId)
+        .maybeSingle();
 
-    // 2. Automated Verification via Scraper
-    const verification = await verifyCosmofeedPayment(transactionId);
-    
-    if (verification.success && verification.plan) {
-      const days = verification.plan === 'WEEKLY' ? 7 : verification.plan === 'MONTHLY' ? 30 : verification.plan === 'TWO_MONTH' ? 60 : 90;
+      if (existingPayment) return res.status(400).json({ error: 'Transaction ID already submitted.' });
+
+      await supabase.from('payments').insert([{
+        userId: userId,
+        amount: 0,
+        planType: 'MONTHLY',
+        razorpayOrderId: transactionId,
+        status: 'PENDING'
+      }]);
+
+      console.log('PENDING', `Payment verification submitted for user ${userId} with transaction ${transactionId}`);
+      res.json({ message: 'Verification request sent! An admin will approve your account shortly.', pending: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin Endpoints
+  const ADMIN_UID = '3a26b2d8-dfbf-41bd-af80-d16cd6e6546c';
+
+  app.get('/api/admin/payments', requireAuth, async (req, res) => {
+    try {
+      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*, app_users(email)')
+        .eq('status', 'PENDING')
+        .order('createdAt', { ascending: false });
+        
+      if (error) throw error;
+      res.json({ payments: data });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/admin/payments/approve', requireAuth, async (req, res) => {
+    try {
+      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      
+      const { paymentId, planType } = req.body;
+      
+      const { data: payment } = await supabase.from('payments').select('*').eq('id', paymentId).single();
+      if (!payment) return res.status(404).json({ error: 'Payment not found' });
+
+      const plan = planType || payment.planType || 'MONTHLY';
+      const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : 90;
       const quotas = {
         WEEKLY: { r: 10, h: 10, o: 10 },
         MONTHLY: { r: 15, h: 15, o: 15 },
         TWO_MONTH: { r: 25, h: 25, o: 25 },
         THREE_MONTH: { r: 35, h: 35, o: 35 }
-      }[verification.plan as 'WEEKLY'|'MONTHLY'|'TWO_MONTH'|'THREE_MONTH'] || { r: 10, h: 10, o: 10 };
+      }[plan] || { r: 10, h: 10, o: 10 };
       
-      // Update Subscription
       await supabase.from('subscriptions').upsert({
-        userId: userId,
-        planType: verification.plan,
+        userId: payment.userId,
+        planType: plan,
         status: 'ACTIVE',
         cycleStart: new Date().toISOString(),
         cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
@@ -732,26 +776,25 @@ app.post('/api/payments/verify', requireAuth, async (req, res) => {
         jobs_onsite_count: quotas.o
       });
 
-      // Record Payment
-      await supabase.from('payments').insert([{
-        userId: userId,
-        amount: 0, // Recorded via scraper
-        planType: verification.plan,
-        razorpayOrderId: transactionId,
-        status: 'COMPLETED'
-      }]);
-
-      console.log('SUCCESS', `Verified payment for user ${userId} with transaction ${transactionId}`);
-      res.json({ message: 'Subscription activated!' });
-    } else {
-      res.status(400).json({ error: 'Payment verification failed. Please check your Transaction ID.' });
+      await supabase.from('payments').update({ status: 'COMPLETED', planType: plan }).eq('id', paymentId);
+      res.json({ message: 'Payment approved successfully!' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  });
 
-app.listen(PORT, () => {
+  app.post('/api/admin/payments/reject', requireAuth, async (req, res) => {
+    try {
+      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      const { paymentId } = req.body;
+      await supabase.from('payments').update({ status: 'FAILED' }).eq('id', paymentId);
+      res.json({ message: 'Payment rejected.' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.listen(PORT, () => {
   console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
 });
 
