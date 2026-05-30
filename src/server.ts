@@ -836,19 +836,19 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
       // Deactivate old active subscriptions first
       await supabase.from('subscriptions')
         .update({ status: 'EXPIRED' })
-        .eq('userId', userId)
+        .eq('user_id', userId)
         .eq('status', 'ACTIVE');
 
       // Create new active subscription
       const { error } = await supabase.from('subscriptions').insert({
         id: randomUUID(),
-        userId: userId,
-        planType: plan,
+        user_id: userId,
+        plan_type: plan,
         status: 'ACTIVE',
-        cycleStart: new Date().toISOString(),
-        cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
-        jobsVisible: jobsVisible,
-        jobsCount: 0
+        cycle_start: new Date().toISOString(),
+        cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+        jobs_visible: jobsVisible,
+        jobs_count: 0
       });
 
       if (error) throw error;
@@ -870,12 +870,12 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
       // Create a pending payment record
       const { error } = await supabase.from('payments').insert({
-        userId: userId,
+        user_id: userId,
         user_email: (req as any).user?.email || 'unknown',
-        razorpayOrderId: orderId, // using this field for Cosmofeed Order ID
+        razorpay_order_id: orderId, // using this field for Cosmofeed Order ID
         amount: 0, // amount can be verified by admin later
         status: 'PENDING',
-        planType: planType || 'WEEKLY'
+        plan_type: planType || 'WEEKLY'
       });
 
       if (error) throw error;
