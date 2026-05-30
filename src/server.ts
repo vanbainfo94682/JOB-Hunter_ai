@@ -884,9 +884,24 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
           user_profiles: allProfiles?.filter((prof: any) => prof.user_id === u.id) || []
         }));
 
-        res.json({ users: usersWithRelations });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+        res.json({ users: users || [] });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/admin/logs', requireAuth, async (req, res) => {
+    try {
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
+      const { data: logs, error } = await supabase
+        .from('system_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      res.json({ logs: logs || [] });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 
