@@ -341,9 +341,9 @@ app.get('/api/profile', requireAuth, async (req, res) => {
 
     res.json({
       ...profile,
-      fullName: profile.fullName || '',
+      fullName: profile.full_name || '',
       email: profile.user?.email || '',
-      onboarding_completed: extraData.onboardingCompleted || false,
+      onboarding_completed: profile.onboarding_completed || false,
       dob: extraData.dob || '',
       city: extraData.city || '',
       state: extraData.state || '',

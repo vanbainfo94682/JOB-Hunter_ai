@@ -3,6 +3,7 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { playwrightQueue } from '../../utils/playwrightQueue';
 import { supabase, logSystem, isMncCompany, prisma } from '../../db';
 import { calculateJobMatch, computeLocalJobMatchHeuristics } from './matcher';
+import { generateJSONResponse } from '../openrouter';
 import { execFile } from 'child_process';
 import path from 'path';
 
@@ -613,8 +614,8 @@ export async function scrapeCustomListUrls(searchTerms: string[]): Promise<RawSc
     }
   }
 
-  // Shuffle and pick top 3 matching URLs to avoid infinite loops and timeouts
-  const selectedUrls = targetUrls.sort(() => 0.5 - Math.random()).slice(0, 3);
+  // Execute scraping on all matching target URLs without limits
+  const selectedUrls = targetUrls;
   
   for (const target of selectedUrls) {
     await logSystem('INFO', `Python Scraper: Fetching ${target.name} -> ${target.url}`);
@@ -669,31 +670,39 @@ export async function runScraperJob(userId?: string) {
       : await prisma.agentSettings.findFirst();
     
     let searchTerms: string[] = [];
-    if (settings?.targetField) {
-      try {
-        const parsed = JSON.parse(settings.targetField);
-        if (Array.isArray(parsed)) {
-          searchTerms = parsed.map(f => {
-            const lower = f.toLowerCase();
-            if (lower.includes('frontend') || lower.includes('front-end')) return 'frontend';
-            if (lower.includes('backend') || lower.includes('back-end')) return 'backend';
-            if (lower.includes('fullstack') || lower.includes('full-stack')) return 'developer';
-            if (lower.includes('devops') || lower.includes('sre')) return 'devops';
-            if (lower.includes('security') || lower.includes('cyber')) return 'security';
-            if (lower.includes('data') || lower.includes('ai') || lower.includes('machine')) return 'data';
-            if (lower.includes('mobile') || lower.includes('ios') || lower.includes('android')) return 'mobile';
-            if (lower.includes('product')) return 'product';
-            return f.split(/\s+/)[0];
-          });
-        }
-      } catch (e) {}
+    try {
+      const prompt = `
+        Analyze the following candidate profile and career preferences.
+        Generate a JSON object with a single key "keywords" containing an array of 3 to 5 highly specific job search keywords (e.g., 'react', 'python', 'cybersecurity') that represent the best matches for this candidate's skills and interests.
+
+        Resume Text/Skills: ${profile.raw_resume_text || profile.skills}
+        Target Roles: ${profile.target_titles}
+        Experience Level: ${settings?.experience_level || 'Entry Level'}
+        User Custom Directives/Interests: ${settings?.ceo_directive || 'None'}
+      `;
+      const aiResponse = await generateJSONResponse<{ keywords: string[] }>(prompt, "You are a professional tech recruiter AI. Return strictly valid JSON.");
+      if (aiResponse && aiResponse.keywords && Array.isArray(aiResponse.keywords)) {
+        searchTerms = aiResponse.keywords;
+      }
+    } catch (e) {
+      console.error('AI Keyword Extraction failed, falling back to basic terms', e);
     }
+    
+    if (searchTerms.length === 0) {
+      if (settings?.target_field) {
+        try {
+          const parsed = JSON.parse(settings.target_field);
+          if (Array.isArray(parsed)) searchTerms = parsed;
+        } catch (e) {}
+      }
+    }
+    
     searchTerms = Array.from(new Set(searchTerms)).filter(Boolean);
     if (searchTerms.length === 0) {
       searchTerms = ['developer'];
     }
 
-    await logSystem('INFO', `Smart crawler extracted search query terms based on your settings: ${searchTerms.join(', ')}`);
+    await logSystem('INFO', `[AI Executive Report] Audited resume. Smart crawler dynamically extracted optimized search keywords: ${searchTerms.join(', ')}`);
 
     // 1. Fetch remote job listings across multiple premium remote job boards
     const feeds = [
