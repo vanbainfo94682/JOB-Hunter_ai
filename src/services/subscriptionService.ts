@@ -46,7 +46,10 @@ export async function getOrCreateUserSettings(userId: string, fallbackKey?: stri
     .select()
     .single();
 
-  if (createError) console.error('Error creating settings:', createError.message);
+  if (createError) {
+    console.error('Error creating settings:', createError.message);
+    throw createError;
+  }
   return created;
 }
 
@@ -54,7 +57,7 @@ export async function getOrCreateUserSettings(userId: string, fallbackKey?: stri
  * Returns or creates the active subscription for a given user.
  */
 export async function getOrCreateSubscription(userId: string) {
-  const { data: active } = await supabase
+  const { data: active, error: selectError } = await supabase
     .from('subscriptions')
     .select('*')
     .eq('userId', userId)
@@ -62,6 +65,11 @@ export async function getOrCreateSubscription(userId: string) {
     .order('cycleStart', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (selectError) {
+    console.error('[getOrCreateSubscription] Select error:', selectError.message);
+    throw selectError;
+  }
 
   if (active && new Date() > new Date(active.cycleEnd)) {
     const { data: expired } = await supabase
@@ -78,7 +86,7 @@ export async function getOrCreateSubscription(userId: string) {
   const now = new Date();
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const { data: created } = await supabase
+  const { data: created, error: insertError } = await supabase
     .from('subscriptions')
     .insert([{
       id: randomUUID(),
@@ -92,6 +100,11 @@ export async function getOrCreateSubscription(userId: string) {
     }])
     .select()
     .single();
+
+  if (insertError) {
+    console.error('[getOrCreateSubscription] Insert error:', insertError.message);
+    throw insertError;
+  }
 
   return created;
 }
@@ -107,7 +120,7 @@ export function getPlanDetails(planType: string) {
   };
   return {
     name: planNames[planType] || 'Standard Plan',
-    priceINR: planType === 'WEEKLY' ? 50 : planType === 'MONTHLY' ? 190 : 399,
+    priceINR: planType === 'WEEKLY' ? 1 : planType === 'MONTHLY' ? 50 : planType === 'TWO_MONTH' ? 100 : 150,
     jobsVisible: PLAN_JOBS[planType] || 10,
     durationDays: planType === 'WEEKLY' ? 7 : planType === 'MONTHLY' ? 30 : 60,
     features: planType === 'WEEKLY'

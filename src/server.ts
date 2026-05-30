@@ -143,6 +143,7 @@ async function requirePremium(req: any, res: any, next: any) {
     }
     next();
   } catch (err: any) {
+    console.error('[requirePremium ERROR]', err);
     return res.status(500).json({ error: 'Failed to verify subscription status.' });
   }
 }
