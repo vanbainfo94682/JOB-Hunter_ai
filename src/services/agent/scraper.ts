@@ -460,9 +460,10 @@ export async function crawlStealthJobLink(url: string, userId?: string): Promise
     await logSystem('INFO', `Navigating stealth crawler to: ${url}`);
     let browser;
     try {
-      const settings = userId
-        ? await prisma.agentSettings.findFirst({ where: { userId } })
-        : await prisma.agentSettings.findFirst();
+      let sReq = supabase.from('agent_settings').select('*');
+      if (userId) sReq = sReq.eq('user_id', userId);
+      const { data: sData } = await sReq.maybeSingle();
+      const settings = sData ? { proxyUrl: sData.proxy_url, cookiesJson: sData.cookies_json } : null;
       const launchOptions: any = {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -655,19 +656,20 @@ export async function scrapeCustomListUrls(searchTerms: string[]): Promise<RawSc
  */
 export async function runScraperJob(userId?: string) {
   try {
-    const profile = userId
-      ? await prisma.userProfile.findFirst({ where: { userId } })
-      : await prisma.userProfile.findFirst();
-
+    let pReq = supabase.from('user_profiles').select('*');
+    if (userId) pReq = pReq.eq('user_id', userId);
+    const { data: pData } = await pReq.maybeSingle();
+    const profile = pData ? { ...pData, fullName: pData.full_name, skills: pData.skills, rawResumeText: pData.raw_resume_text, targetTitles: pData.target_titles } : null;
+    
     if (!profile) {
-      await logSystem('WARNING', 'Scraper ran but skipped matching because no User Profile is uploaded yet.');
+      await logSystem('WARNING', 'Scraper aborted: No user profile found. Please upload your resume first.');
       return;
     }
 
-    // Per-user settings
-    const settings = userId
-      ? await prisma.agentSettings.findFirst({ where: { userId } })
-      : await prisma.agentSettings.findFirst();
+    let sReq = supabase.from('agent_settings').select('*');
+    if (userId) sReq = sReq.eq('user_id', userId);
+    const { data: sData } = await sReq.maybeSingle();
+    const settings = sData ? { ...sData, targetField: sData.target_field, experienceLevel: sData.experience_level, ceoDirective: sData.ceo_directive, autoApplyThreshold: sData.auto_apply_threshold, includeInternships: sData.include_internships, openrouterApiKey: sData.openrouter_api_key, openrouterModels: sData.openrouter_models } : null;
     
     let searchTerms: string[] = [];
     try {
@@ -767,9 +769,7 @@ export async function runScraperJob(userId?: string) {
     for (const rawJob of allScrapedJobs) {
       try {
         // Check if job already exists to avoid duplicates
-        const existing = await prisma.job.findUnique({
-          where: { url: rawJob.url }
-        });
+        const { data: existing } = await supabase.from('jobs').select('id').eq('url', rawJob.url).maybeSingle();
         
         if (existing) continue;
 
@@ -836,26 +836,24 @@ export async function runScraperJob(userId?: string) {
           matchCount++;
         }
 
-        await prisma.job.create({
-          data: {
-            userId,
+        await supabase.from('jobs').insert([{
+            user_id: userId,
             title: rawJob.title,
             company: rawJob.company,
-            isMnc: isMncCompany(rawJob.company),
+            is_mnc: isMncCompany(rawJob.company),
             location: rawJob.location,
             url: rawJob.url,
             description: rawJob.description,
             platform: rawJob.platform,
-            isRemote: rawJob.isRemote,
-            workType: rawJob.workType || 'REMOTE',
-            isInternship: rawJob.isInternship || false,
+            is_remote: rawJob.isRemote,
+            work_type: rawJob.workType || 'REMOTE',
+            is_internship: rawJob.isInternship || false,
             duration: rawJob.duration,
             stipend: rawJob.stipend,
-            matchScore: evaluation.matchScore,
-            matchReason: evaluation.reason,
-            status
-          }
-        });
+            match_score: evaluation.matchScore,
+            match_reason: evaluation.reason,
+            status: status
+        }]);
         savedCount++;
 
         // Rate limit API calls to Gemini during batch match (4 seconds for RPM safety)
