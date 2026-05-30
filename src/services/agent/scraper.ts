@@ -675,10 +675,10 @@ export async function runScraperJob(userId?: string) {
         Analyze the following candidate profile and career preferences.
         Generate a JSON object with a single key "keywords" containing an array of 3 to 5 highly specific job search keywords (e.g., 'react', 'python', 'cybersecurity') that represent the best matches for this candidate's skills and interests.
 
-        Resume Text/Skills: ${profile.raw_resume_text || profile.skills}
-        Target Roles: ${profile.target_titles}
-        Experience Level: ${settings?.experience_level || 'Entry Level'}
-        User Custom Directives/Interests: ${settings?.ceo_directive || 'None'}
+        Resume Text/Skills: ${profile.rawResumeText || profile.skills}
+        Target Roles: ${profile.targetTitles}
+        Experience Level: ${settings?.experienceLevel || 'Entry Level'}
+        User Custom Directives/Interests: ${settings?.ceoDirective || 'None'}
       `;
       const aiResponse = await generateJSONResponse<{ keywords: string[] }>(prompt, "You are a professional tech recruiter AI. Return strictly valid JSON.");
       if (aiResponse && aiResponse.keywords && Array.isArray(aiResponse.keywords)) {
@@ -689,9 +689,9 @@ export async function runScraperJob(userId?: string) {
     }
     
     if (searchTerms.length === 0) {
-      if (settings?.target_field) {
+      if (settings?.targetField) {
         try {
-          const parsed = JSON.parse(settings.target_field);
+          const parsed = JSON.parse(settings.targetField);
           if (Array.isArray(parsed)) searchTerms = parsed;
         } catch (e) {}
       }
