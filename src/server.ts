@@ -343,7 +343,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
       ...profile,
       fullName: profile.full_name || '',
       email: profile.user?.email || '',
-      onboarding_completed: profile.onboarding_completed || false,
+      onboarding_completed: extraData.onboardingCompleted || false,
       dob: extraData.dob || '',
       city: extraData.city || '',
       state: extraData.state || '',
@@ -411,8 +411,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       target_titles: req.body.targetTitles ? JSON.stringify(req.body.targetTitles) : (existing?.target_titles || '[]'),
       skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : (existing?.skills || '[]'),
       experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : (existing?.experience || '[]'),
-      education: packedEducation,
-      onboarding_completed: req.body.onboarding_completed !== undefined ? req.body.onboarding_completed : (existing?.onboarding_completed ?? false)
+      education: packedEducation
     };
     if (existing?.id) updatePayload.id = existing.id;
 
