@@ -403,22 +403,23 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 
     const updatePayload: any = {
       user_id: userId,
-      fullName: req.body.fullName || req.body.fullName || existing?.fullName || 'User',
+      full_name: req.body.fullName || existing?.full_name || 'User',
       phone: req.body.phone !== undefined ? req.body.phone : (existing?.phone || null),
       professional_email: req.body.professional_email || existing?.professional_email || '',
-      resumePath: req.body.resumePath || req.body.resumePath || existing?.resumePath || '',
-      rawResumeText: req.body.rawResumeText || req.body.rawResumeText || existing?.rawResumeText || '',
-      targetTitles: req.body.targetTitles ? JSON.stringify(req.body.targetTitles) : (existing?.targetTitles || '[]'),
+      resume_url: req.body.resumePath || existing?.resume_url || '',
+      raw_resume_text: req.body.rawResumeText || existing?.raw_resume_text || '',
+      target_titles: req.body.targetTitles ? JSON.stringify(req.body.targetTitles) : (existing?.target_titles || '[]'),
       skills: req.body.skills ? (typeof req.body.skills === 'string' ? req.body.skills : JSON.stringify(req.body.skills)) : (existing?.skills || '[]'),
       experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : (existing?.experience || '[]'),
-      education: packedEducation
+      education: packedEducation,
+      onboarding_completed: req.body.onboarding_completed !== undefined ? req.body.onboarding_completed : (existing?.onboarding_completed ?? false)
     };
     if (existing?.id) updatePayload.id = existing.id;
 
     // Upsert using Supabase to bypass Prisma issues
     const { data: updated, error: upsertError } = await supabase
       .from('user_profiles')
-      .upsert(updatePayload, { onConflict: 'userId' })
+      .upsert(updatePayload, { onConflict: 'user_id' })
       .select()
       .single();
       
