@@ -508,7 +508,7 @@ app.get('/api/jobs', requireAuth, requirePremium, async (req, res) => {
   try {
     const userId = getUserId(req);
     const sub = await getOrCreateSubscription(userId);
-    const limit = sub.jobs_visible || 30; // Force to 30 for the presentation layout
+    const limit = sub.jobs_visible || 30;
 
     const { data: dbJobs, error } = await supabase
       .from('jobs')
@@ -518,52 +518,6 @@ app.get('/api/jobs', requireAuth, requirePremium, async (req, res) => {
       .limit(limit);
 
     let jobs = dbJobs || [];
-    
-    // Inject Mock Jobs to perfectly fulfill presentation requirement (10 remote, 10 onsite, 10 hybrid, 20 high match)
-    if (jobs.length < 30) {
-      let remoteCount = jobs.filter(j => j.is_remote).length;
-      let onsiteCount = jobs.filter(j => !j.is_remote && j.work_type === 'ONSITE').length;
-      let hybridCount = jobs.filter(j => j.work_type === 'HYBRID').length;
-      let highMatchCount = jobs.filter(j => j.match_score >= 80).length;
-
-      const mockJobs = [];
-      const titles = ["Full Stack Developer", "Backend Engineer", "Frontend Specialist", "Web Developer", "Cloud Architect", "AI Engineer", "Cyber Security Analyst", "React Developer", "Node.js Expert", "DevOps Engineer"];
-      const companies = ["Google", "Microsoft", "Amazon", "Meta", "Netflix", "Tesla", "Apple", "Uber", "Airbnb", "Stripe"];
-      
-      for (let i = jobs.length; i < 30; i++) {
-        let isRemote = false;
-        let workType = 'ONSITE';
-        
-        if (remoteCount < 10) { isRemote = true; workType = 'REMOTE'; remoteCount++; }
-        else if (hybridCount < 10) { isRemote = false; workType = 'HYBRID'; hybridCount++; }
-        else if (onsiteCount < 10) { isRemote = false; workType = 'ONSITE'; onsiteCount++; }
-        else { isRemote = true; workType = 'REMOTE'; } // Fallback
-        
-        let score = 50 + Math.floor(Math.random() * 25);
-        if (highMatchCount < 20) {
-           score = 80 + Math.floor(Math.random() * 18);
-           highMatchCount++;
-        }
-        
-        mockJobs.push({
-          id: `mock-${i}`,
-          title: titles[i % titles.length] + (workType === 'HYBRID' ? ' (Hybrid)' : ''),
-          company: companies[i % companies.length],
-          location: isRemote ? "Worldwide" : "San Francisco, CA",
-          description: "This is a great opportunity to work with cutting edge tech. We are looking for passionate engineers.",
-          platform: "MOCK_AI",
-          is_remote: isRemote,
-          work_type: workType,
-          status: 'SCRAPED',
-          user_id: userId,
-          match_score: score,
-          created_at: new Date().toISOString()
-        });
-      }
-      jobs = [...jobs, ...mockJobs];
-    }
-
-    jobs.sort((a, b) => b.match_score - a.match_score);
 
     res.json(jobs.map(j => {
       let parsedLogs = [];
