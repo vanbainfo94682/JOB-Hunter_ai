@@ -430,6 +430,16 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/jobs/scrape', requireAuth, requirePremium, async (req, res) => {
+  try {
+    // Run asynchronously without awaiting so the request returns immediately
+    runScraperJob().catch(e => console.error('Manual scrape failed:', e));
+    res.json({ message: 'Scraper triggered successfully in the background' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/jobs/total', async (req, res) => {
   try {
     const { count } = await supabase
@@ -478,24 +488,24 @@ app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
   try {
     const rawSettings = await getOrCreateUserSettings(getUserId(req));
     if (!rawSettings) return res.json(null);
-    if (rawSettings.cookiesJson) {
-      rawSettings.cookiesJson = decryptString(rawSettings.cookiesJson);
+    if (rawSettings.cookies_json) {
+      rawSettings.cookies_json = decryptString(rawSettings.cookies_json);
     }
     // Map DB snake_case -> frontend camelCase
     res.json({
       id: rawSettings.id,
-      isActive: rawSettings.isActive ?? false,
-      dailyLimit: rawSettings.dailyLimit ?? 10,
-      remoteOnly: rawSettings.remoteOnly ?? true,
-      includeInternships: rawSettings.includeInternships ?? true,
-      autoApplyThreshold: rawSettings.autoApplyThreshold ?? 75,
-      proxyUrl: rawSettings.proxyUrl || '',
-      cookiesJson: rawSettings.cookiesJson || '',
-      openrouterApiKey: rawSettings.openrouterApiKey || '',
-      openrouterModels: rawSettings.openrouterModels || '',
-      ceoDirective: rawSettings.ceoDirective || '',
-      targetField: rawSettings.targetField || '',
-      experienceLevel: rawSettings.experienceLevel || '',
+      isActive: rawSettings.is_active ?? false,
+      dailyLimit: rawSettings.daily_limit ?? 10,
+      remoteOnly: rawSettings.remote_only ?? true,
+      includeInternships: rawSettings.include_internships ?? true,
+      autoApplyThreshold: rawSettings.auto_apply_threshold ?? 75,
+      proxyUrl: rawSettings.proxy_url || '',
+      cookiesJson: rawSettings.cookies_json || '',
+      openrouterApiKey: rawSettings.openrouter_api_key || '',
+      openrouterModels: rawSettings.openrouter_models || '',
+      ceoDirective: rawSettings.ceo_directive || '',
+      targetField: rawSettings.target_field || '',
+      experienceLevel: rawSettings.experience_level || '',
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -507,19 +517,19 @@ app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
     const userId = getUserId(req);
     // Map frontend camelCase -> DB snake_case
     const payload: any = {};
-    if (req.body.isActive !== undefined)           payload.isActive = req.body.isActive;
-    if (req.body.dailyLimit !== undefined)         payload.dailyLimit = req.body.dailyLimit;
-    if (req.body.remoteOnly !== undefined)         payload.remoteOnly = req.body.remoteOnly;
-    if (req.body.includeInternships !== undefined) payload.includeInternships = req.body.includeInternships;
-    if (req.body.autoApplyThreshold !== undefined) payload.autoApplyThreshold = req.body.autoApplyThreshold;
-    if (req.body.proxyUrl !== undefined)           payload.proxyUrl = req.body.proxyUrl;
-    if (req.body.openrouterApiKey !== undefined)   payload.openrouterApiKey = req.body.openrouterApiKey;
-    if (req.body.openrouterModels !== undefined)   payload.openrouterModels = req.body.openrouterModels;
-    if (req.body.ceoDirective !== undefined)       payload.ceoDirective = req.body.ceoDirective;
-    if (req.body.targetField !== undefined)        payload.targetField = req.body.targetField;
-    if (req.body.experienceLevel !== undefined)    payload.experienceLevel = req.body.experienceLevel;
+    if (req.body.isActive !== undefined)           payload.is_active = req.body.isActive;
+    if (req.body.dailyLimit !== undefined)         payload.daily_limit = req.body.dailyLimit;
+    if (req.body.remoteOnly !== undefined)         payload.remote_only = req.body.remoteOnly;
+    if (req.body.includeInternships !== undefined) payload.include_internships = req.body.includeInternships;
+    if (req.body.autoApplyThreshold !== undefined) payload.auto_apply_threshold = req.body.autoApplyThreshold;
+    if (req.body.proxyUrl !== undefined)           payload.proxy_url = req.body.proxyUrl;
+    if (req.body.openrouterApiKey !== undefined)   payload.openrouter_api_key = req.body.openrouterApiKey;
+    if (req.body.openrouterModels !== undefined)   payload.openrouter_models = req.body.openrouterModels;
+    if (req.body.ceoDirective !== undefined)       payload.ceo_directive = req.body.ceoDirective;
+    if (req.body.targetField !== undefined)        payload.target_field = req.body.targetField;
+    if (req.body.experienceLevel !== undefined)    payload.experience_level = req.body.experienceLevel;
     if (req.body.cookiesJson !== undefined) {
-      payload.cookiesJson = encryptString(req.body.cookiesJson);
+      payload.cookies_json = encryptString(req.body.cookiesJson);
     }
     // Ensure settings row exists first
     await getOrCreateUserSettings(userId);
@@ -533,18 +543,18 @@ app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
     // Return mapped camelCase
     res.json({
       id: updated.id,
-      isActive: updated.isActive ?? false,
-      dailyLimit: updated.dailyLimit ?? 10,
-      remoteOnly: updated.remoteOnly ?? true,
-      includeInternships: updated.includeInternships ?? true,
-      autoApplyThreshold: updated.autoApplyThreshold ?? 75,
-      proxyUrl: updated.proxyUrl || '',
-      cookiesJson: updated.cookiesJson ? decryptString(updated.cookiesJson) : '',
-      openrouterApiKey: updated.openrouterApiKey || '',
-      openrouterModels: updated.openrouterModels || '',
-      ceoDirective: updated.ceoDirective || '',
-      targetField: updated.targetField || '',
-      experienceLevel: updated.experienceLevel || '',
+      isActive: updated.is_active ?? false,
+      dailyLimit: updated.daily_limit ?? 10,
+      remoteOnly: updated.remote_only ?? true,
+      includeInternships: updated.include_internships ?? true,
+      autoApplyThreshold: updated.auto_apply_threshold ?? 75,
+      proxyUrl: updated.proxy_url || '',
+      cookiesJson: updated.cookies_json ? decryptString(updated.cookies_json) : '',
+      openrouterApiKey: updated.openrouter_api_key || '',
+      openrouterModels: updated.openrouter_models || '',
+      ceoDirective: updated.ceo_directive || '',
+      targetField: updated.target_field || '',
+      experienceLevel: updated.experience_level || '',
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
