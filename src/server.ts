@@ -782,11 +782,11 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
   });
 
   // Admin Endpoints
-  const ADMIN_UID = '3a26b2d8-dfbf-41bd-af80-d16cd6e6546c';
+  const ADMIN_UIDS = ['3a26b2d8-dfbf-41bd-af80-d16cd6e6546c', 'cf5c3319-5aad-40fd-be30-508cc1167c63'];
 
   app.get('/api/admin/payments', requireAuth, async (req, res) => {
     try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
       
       const { data, error } = await supabase
         .from('payments')
@@ -803,7 +803,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
   app.post('/api/admin/payments/approve', requireAuth, async (req, res) => {
     try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
       
       const { paymentId, planType } = req.body;
       
@@ -833,7 +833,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
   app.post('/api/admin/payments/reject', requireAuth, async (req, res) => {
     try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
       const { paymentId } = req.body;
       await supabase.from('payments').update({ status: 'FAILED' }).eq('id', paymentId);
       res.json({ message: 'Payment rejected.' });
@@ -856,7 +856,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
   app.post('/api/admin/system/config', requireAuth, async (req, res) => {
     try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
       const { key, value } = req.body;
       await supabase.from('system_config').upsert({ key, value, updatedAt: new Date().toISOString() });
       res.json({ message: 'Configuration updated successfully' });
@@ -867,7 +867,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
   app.get('/api/admin/users', requireAuth, async (req, res) => {
     try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
             const { data: users, error } = await supabase
           .from('app_users')
           .select('*, subscriptions(*)');
@@ -892,12 +892,12 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
   app.post('/api/admin/users/plan', requireAuth, async (req, res) => {
     try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
       
       const { userId, planType } = req.body;
       const plan = planType || 'MONTHLY';
-      const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : 90;
-      const jobsVisible = plan === 'WEEKLY' ? 10 : plan === 'MONTHLY' ? 25 : plan === 'TWO_MONTH' ? 35 : 50;
+      const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : plan === 'VIP_ELITE' ? 365 : 90;
+      const jobsVisible = plan === 'WEEKLY' ? 10 : plan === 'MONTHLY' ? 25 : plan === 'TWO_MONTH' ? 35 : plan === 'VIP_ELITE' ? 100 : 50;
       
       // Deactivate old active subscriptions first
       await supabase.from('subscriptions')
@@ -953,7 +953,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
       app.post('/api/admin/payments/approve', requireAuth, async (req, res) => {
         try {
-          if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+          if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
           
           const { paymentId, userId, planType } = req.body;
           const plan = planType || 'WEEKLY';
@@ -991,7 +991,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
   // Admin rejects a pending payment
   app.post('/api/admin/payments/reject', requireAuth, async (req, res) => {
     try {
-      if (getUserId(req) !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+      if (!ADMIN_UIDS.includes(getUserId(req))) return res.status(403).json({ error: 'Forbidden' });
       const { paymentId } = req.body;
       await supabase.from('payments').update({ status: 'FAILED' }).eq('id', paymentId);
       res.json({ success: true, message: 'Payment rejected.' });
