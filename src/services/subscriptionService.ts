@@ -15,15 +15,15 @@ export async function getOrCreateUserSettings(userId: string, fallbackKey?: stri
   const { data: existing } = await supabase
     .from('agent_settings')
     .select('*')
-    .eq('userId', userId)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (existing) {
-    if (!existing.openrouterApiKey && fallbackKey) {
+    if (!existing.openrouter_api_key && fallbackKey) {
       const { data: updated } = await supabase
         .from('agent_settings')
-        .update({ openrouterApiKey: fallbackKey })
-        .eq('userId', userId)
+        .update({ openrouter_api_key: fallbackKey })
+        .eq('user_id', userId)
         .select()
         .single();
       return updated;
@@ -36,12 +36,12 @@ export async function getOrCreateUserSettings(userId: string, fallbackKey?: stri
     .from('agent_settings')
     .insert([{
       id: randomUUID(),
-      userId: userId,
-      isActive: false,
-      dailyLimit: 10,
-      remoteOnly: true,
-      autoApplyThreshold: 75,
-      openrouterApiKey: fallbackKey ?? null,
+      user_id: userId,
+      is_active: false,
+      daily_limit: 10,
+      remote_only: true,
+      auto_apply_threshold: 75,
+      openrouter_api_key: fallbackKey ?? null,
     }])
     .select()
     .single();
@@ -60,9 +60,9 @@ export async function getOrCreateSubscription(userId: string) {
   const { data: active, error: selectError } = await supabase
     .from('subscriptions')
     .select('*')
-    .eq('userId', userId)
+    .eq('user_id', userId)
     .eq('status', 'ACTIVE')
-    .order('cycleStart', { ascending: false })
+    .order('cycle_start', { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -71,7 +71,7 @@ export async function getOrCreateSubscription(userId: string) {
     throw selectError;
   }
 
-  if (active && new Date() > new Date(active.cycleEnd)) {
+  if (active && new Date() > new Date(active.cycle_end)) {
     const { data: expired } = await supabase
       .from('subscriptions')
       .update({ status: 'EXPIRED', jobsCount: 0 })
@@ -90,13 +90,13 @@ export async function getOrCreateSubscription(userId: string) {
     .from('subscriptions')
     .insert([{
       id: randomUUID(),
-      userId: userId,
-      planType: 'WEEKLY',
+      user_id: userId,
+      plan_type: 'WEEKLY',
       status: 'ACTIVE',
-      jobsVisible: PLAN_JOBS['WEEKLY'],
-      jobsCount: 0,
-      cycleStart: now.toISOString(),
-      cycleEnd: end.toISOString(),
+      jobs_visible: PLAN_JOBS['WEEKLY'],
+      jobs_count: 0,
+      cycle_start: now.toISOString(),
+      cycle_end: end.toISOString(),
     }])
     .select()
     .single();
@@ -134,6 +134,6 @@ export function getPlanDetails(planType: string) {
 /**
  * Check if user has view quota remaining for the current cycle.
  */
-export function hasViewQuota(sub: { jobsCount: number; jobsVisible: number }): boolean {
-  return sub.jobsCount < sub.jobsVisible;
+export function hasViewQuota(sub: { jobs_count: number; jobs_visible: number }): boolean {
+  return sub.jobs_count < sub.jobs_visible;
 }
