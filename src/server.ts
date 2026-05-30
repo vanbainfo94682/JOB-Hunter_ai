@@ -884,7 +884,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
           user_profiles: allProfiles?.filter((prof: any) => prof.user_id === u.id) || []
         }));
 
-        res.json({ users: users || [] });
+        res.json({ users: usersWithRelations || [] });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
