@@ -343,7 +343,7 @@ app.get('/api/profile', requireAuth, async (req, res) => {
       ...profile,
       fullName: profile.full_name || '',
       email: profile.user?.email || '',
-      onboarding_completed: extraData.onboardingCompleted || false,
+      onboarding_completed: profile.onboarding_completed || false,
       dob: extraData.dob || '',
       city: extraData.city || '',
       state: extraData.state || '',
@@ -397,8 +397,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       dob: req.body.dob !== undefined ? req.body.dob : (existingExtraData.dob || null),
       current_institution: req.body.current_institution !== undefined ? req.body.current_institution : (existingExtraData.currentInstitution || null),
       city: req.body.city !== undefined ? req.body.city : (existingExtraData.city || null),
-      state: req.body.state !== undefined ? req.body.state : (existingExtraData.state || null),
-      onboardingCompleted: req.body.onboarding_completed !== undefined ? req.body.onboarding_completed : (existingExtraData.onboardingCompleted ?? false)
+      state: req.body.state !== undefined ? req.body.state : (existingExtraData.state || null)
     });
 
     const updatePayload: any = {
@@ -413,6 +412,13 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       experience: req.body.experience ? (typeof req.body.experience === 'string' ? req.body.experience : JSON.stringify(req.body.experience)) : (existing?.experience || '[]'),
       education: packedEducation
     };
+    
+    if (req.body.onboarding_completed !== undefined) {
+      updatePayload.onboarding_completed = req.body.onboarding_completed;
+    } else if (existing?.onboarding_completed !== undefined) {
+      updatePayload.onboarding_completed = existing.onboarding_completed;
+    }
+
     if (existing?.id) updatePayload.id = existing.id;
 
     // Upsert using Supabase to bypass Prisma issues
