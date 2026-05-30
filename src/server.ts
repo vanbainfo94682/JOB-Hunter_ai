@@ -433,9 +433,49 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 app.post('/api/jobs/scrape', requireAuth, requirePremium, async (req, res) => {
   try {
     // Run asynchronously without awaiting so the request returns immediately
-    runScraperJob().catch(e => console.error('Manual scrape failed:', e));
+    runScraperJob(getUserId(req)).catch(e => console.error('Manual scrape failed:', e));
     res.json({ message: 'Scraper triggered successfully in the background' });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/jobs/crawl', requireAuth, requirePremium, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+    
+    const userId = getUserId(req);
+    const job = await crawlStealthJobLink(url, userId);
+    
+    if (job) {
+      // Save it to the database
+      const { data: savedJob, error } = await supabase.from('jobs').insert([{
+        url: job.url,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        description: job.description,
+        platform: job.platform,
+        is_remote: job.isRemote,
+        work_type: job.workType || 'REMOTE',
+        status: 'SCRAPED',
+        user_id: userId,
+        match_score: 100, // Explicitly crawled, assume high interest
+        created_at: new Date().toISOString()
+      }]).select().single();
+      
+      if (error) {
+        console.error('Failed to save crawled job:', error);
+        return res.json({ job: null, error: 'Job crawled but failed to save to database.' });
+      }
+      
+      res.json({ job: savedJob });
+    } else {
+      res.json({ job: null, error: 'Could not extract job from the provided URL.' });
+    }
+  } catch (error: any) {
+    console.error('Crawl Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
