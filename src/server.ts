@@ -339,6 +339,11 @@ app.get('/api/profile', requireAuth, async (req, res) => {
       }
     } catch (e) {}
 
+    const safeParse = (str: any, defaultVal: any) => {
+      try { return str ? JSON.parse(str) : defaultVal; }
+      catch (e) { return defaultVal; }
+    };
+
     res.json({
       ...profile,
       fullName: profile.full_name || '',
@@ -348,10 +353,12 @@ app.get('/api/profile', requireAuth, async (req, res) => {
       city: extraData.city || '',
       state: extraData.state || '',
       current_institution: extraData.currentInstitution || '',
-      skills: profile.skills ? JSON.parse(profile.skills) : [],
-      experience: profile.experience ? JSON.parse(profile.experience) : [],
+      skills: safeParse(profile.skills, []),
+      experience: safeParse(profile.experience, []),
       education: eduList,
-      targetTitles: profile.targetTitles ? JSON.parse(profile.targetTitles) : [],
+      targetTitles: safeParse(profile.target_titles, []),
+      resumePath: profile.resume_url || '',
+      rawResumeText: profile.raw_resume_text || ''
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
