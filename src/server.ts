@@ -831,23 +831,27 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
       const { userId, planType } = req.body;
       const plan = planType || 'MONTHLY';
       const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : 90;
-      const quotas = ({
-        WEEKLY: { r: 10, h: 10, o: 10 },
-        MONTHLY: { r: 15, h: 15, o: 15 },
-        TWO_MONTH: { r: 25, h: 25, o: 25 },
-        THREE_MONTH: { r: 35, h: 35, o: 35 }
-      } as Record<string, { r: number, h: number, o: number }>)[plan] || { r: 10, h: 10, o: 10 };
+      const jobsVisible = plan === 'WEEKLY' ? 10 : plan === 'MONTHLY' ? 25 : plan === 'TWO_MONTH' ? 35 : 50;
       
-      await supabase.from('subscriptions').upsert({
+      // Deactivate old active subscriptions first
+      await supabase.from('subscriptions')
+        .update({ status: 'EXPIRED' })
+        .eq('userId', userId)
+        .eq('status', 'ACTIVE');
+
+      // Create new active subscription
+      const { error } = await supabase.from('subscriptions').insert({
+        id: randomUUID(),
         userId: userId,
         planType: plan,
         status: 'ACTIVE',
         cycleStart: new Date().toISOString(),
         cycleEnd: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
-        jobs_remote_count: quotas.r,
-        jobs_hybrid_count: quotas.h,
-        jobs_onsite_count: quotas.o
+        jobsVisible: jobsVisible,
+        jobsCount: 0
       });
+
+      if (error) throw error;
 
       res.json({ message: 'User plan updated successfully!' });
     } catch (error: any) {
