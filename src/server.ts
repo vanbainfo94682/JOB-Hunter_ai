@@ -718,9 +718,9 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
       
       const { data, error } = await supabase
         .from('payments')
-        .select('*, app_users(email)')
+        .select('*')
         .eq('status', 'PENDING')
-        .order('createdAt', { ascending: false });
+        .order('created_at', { ascending: false });
         
       if (error) throw error;
       res.json({ payments: data });
@@ -738,14 +738,9 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
       const { data: payment } = await supabase.from('payments').select('*').eq('id', paymentId).single();
       if (!payment) return res.status(404).json({ error: 'Payment not found' });
 
+      const PLAN_JOBS: Record<string, number> = { WEEKLY: 200, MONTHLY: 1000, TWO_MONTH: 2500, THREE_MONTH: 4000 };
       const plan = planType || payment.plan_type || 'MONTHLY';
       const days = plan === 'WEEKLY' ? 7 : plan === 'MONTHLY' ? 30 : plan === 'TWO_MONTH' ? 60 : 90;
-      const quotas = ({
-        WEEKLY: { r: 10, h: 10, o: 10 },
-        MONTHLY: { r: 15, h: 15, o: 15 },
-        TWO_MONTH: { r: 25, h: 25, o: 25 },
-        THREE_MONTH: { r: 35, h: 35, o: 35 }
-      } as Record<string, { r: number, h: number, o: number }>)[plan] || { r: 10, h: 10, o: 10 };
       
       await supabase.from('subscriptions').upsert({
         user_id: payment.user_id,
@@ -753,9 +748,8 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
         status: 'ACTIVE',
         cycle_start: new Date().toISOString(),
         cycle_end: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
-        jobs_remote_count: quotas.r,
-        jobs_hybrid_count: quotas.h,
-        jobs_onsite_count: quotas.o
+        jobs_visible: PLAN_JOBS[plan] || 200,
+        jobs_count: 0
       });
 
       await supabase.from('payments').update({ status: 'COMPLETED', plan_type: plan }).eq('id', paymentId);
