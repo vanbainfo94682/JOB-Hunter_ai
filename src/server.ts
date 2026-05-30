@@ -514,7 +514,8 @@ app.get('/api/jobs', requireAuth, requirePremium, async (req, res) => {
       .from('jobs')
       .select('*')
       .or(`user_id.eq.${userId},user_id.is.null`)
-      .order('match_score', { ascending: false })
+      .not('match_score', 'is', null)
+      .order('match_score', { ascending: false, nullsFirst: false })
       .limit(limit);
 
     let jobs = dbJobs || [];

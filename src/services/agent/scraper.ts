@@ -794,6 +794,11 @@ export async function runScraperJob(userId?: string) {
           settings?.experienceLevel
         );
 
+        if (localScreen.matchScore < 40) {
+          await logSystem('INFO', `[Pre-Filter] Skipped irrelevant job: "${rawJob.title}" at "${rawJob.company}" (Local Match Score: ${localScreen.matchScore}% - Below 40% threshold)`);
+          continue;
+        }
+
         if (localScreen.matchScore < 60) {
           // If the job has a very low local keyword/skills overlap, save it as SCRAPED directly without calling Gemini!
           // This saves massive API tokens.
