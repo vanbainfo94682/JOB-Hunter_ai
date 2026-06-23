@@ -50,6 +50,8 @@ interface Job {
   recruiterName?: string;
   status: 'SCRAPED' | 'MATCHED' | 'SKIPPED' | 'QUEUED' | 'APPLYING' | 'APPLIED' | 'FAILED';
   appliedAt?: string;
+  hrEmail?: string;
+  hrEmailSent?: boolean;
   logs: { time: string; message: string }[];
   createdAt: string;
 }
