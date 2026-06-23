@@ -1,44 +1,76 @@
+import { chromium } from 'playwright-extra';
+import stealthPlugin = require('puppeteer-extra-plugin-stealth');
 import { logSystem } from '../db';
-import { generateTextResponse } from './openrouter';
+
+const chromiumStealth = chromium;
+chromiumStealth.use(stealthPlugin());
 
 /**
  * HR Email Finder Service
- * Uses AI to guess/generate the HR email format based on company name/domain
- * and provides a draft cold email based on the job and profile.
+ * Scrapes DuckDuckGo HTML directly to find public HR/recruiting emails for the given company.
  */
-
 export async function findHREmail(companyName: string, domain?: string): Promise<{ email: string, confidence: string }> {
+  let browser = null;
   try {
-    // Simulated HR discovery using AI to predict standard corporate email patterns
-    // In a real production system, this would call Hunter.io API or Apollo.io API
+    await logSystem('INFO', `Starting Automated Web Scraper for HR Email Discovery: ${companyName}`);
     
-    console.log('INFO', `Starting AI HR Discovery for company: ${companyName}`);
+    browser = await chromiumStealth.launch({ headless: true });
+    const context = await browser.newContext();
+    const page = await context.newPage();
     
-    const prompt = `
-      You are an expert recruiter and OSINT analyst.
-      I have a company named "${companyName}". 
-      Predict the most likely email address for the HR department, Hiring Manager, or Talent Acquisition team.
-      If a domain is not provided, guess the domain (e.g., @google.com).
-      Respond ONLY with a JSON object in this exact format:
-      {"email": "careers@company.com", "confidence": "high/medium/low"}
-    `;
-
-    const result = await generateTextResponse(prompt, 'gemini-1.5-flash');
+    // Construct search query
+    const domainQuery = domain ? ` OR "@${domain}"` : '';
+    const query = `"${companyName}" HR email OR "careers@" OR "recruiting@" OR "jobs@" OR "talent@"${domainQuery}`;
     
-    try {
-      const cleaned = result.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleaned);
+    // Navigate to DuckDuckGo HTML version to bypass strict bot protections
+    await page.goto(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`);
+    
+    // Extract text from search results
+    const text = await page.innerText('body');
+    
+    // Regex to match typical email structures
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const emails = text.match(emailRegex) || [];
+    
+    // Clean and filter emails
+    const uniqueEmails = Array.from(new Set(emails)).filter((e: unknown) => {
+      if (typeof e !== 'string') return false;
+      const lower = e.toLowerCase();
+      // Filter out obvious fake/search engine emails
+      return !lower.includes('duckduckgo') && 
+             !lower.includes('example.com') && 
+             !lower.includes('sentry.io') &&
+             !lower.includes('domain.com');
+    });
+    
+    if (uniqueEmails.length > 0) {
+      // Prioritize careers/hr/recruiting emails if multiple found
+      let bestEmail = uniqueEmails[0];
+      let confidence = 'medium';
       
-      console.log('SUCCESS', `HR Email discovered for ${companyName}: ${parsed.email}`);
-      return { email: parsed.email, confidence: parsed.confidence };
-    } catch (e) {
-      // Fallback if AI fails to output valid JSON
-      const fallbackEmail = `careers@${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
-      return { email: fallbackEmail, confidence: 'low' };
+      for (const email of uniqueEmails) {
+        const lower = email.toLowerCase();
+        if (lower.startsWith('careers@') || lower.startsWith('hr@') || lower.startsWith('recruiting@') || lower.startsWith('talent@')) {
+          bestEmail = email;
+          confidence = 'high';
+          break;
+        }
+      }
+      
+      await logSystem('SUCCESS', `Scraped web and found HR Email for ${companyName}: ${bestEmail}`);
+      return { email: bestEmail, confidence };
     }
-
+    
+    throw new Error("No valid email addresses found in search results.");
   } catch (error: any) {
-    console.log('ERROR', `Failed to find HR email for ${companyName}: ${error.message}`);
-    return { email: `talent@${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`, confidence: 'low' };
+    await logSystem('WARNING', `Failed to scrape HR email for ${companyName}: ${error.message}. Using fallback generator.`);
+    
+    // Fallback: Generate an educated guess if scraping yields zero results
+    const fallbackEmail = `careers@${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+    return { email: fallbackEmail, confidence: 'low' };
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
   }
 }

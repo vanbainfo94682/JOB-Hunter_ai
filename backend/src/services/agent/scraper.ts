@@ -4,6 +4,7 @@ import { playwrightQueue } from '../../utils/playwrightQueue';
 import { supabase, logSystem, isMncCompany, prisma } from '../../db';
 import { calculateJobMatch, computeLocalJobMatchHeuristics, improveResumeForJob, extractHrEmail } from './matcher';
 import { applyToJob } from './applier';
+import { findHREmail } from '../hrFinder';
 import { generateJSONResponse } from '../openrouter';
 import { execFile } from 'child_process';
 import path from 'path';
@@ -930,8 +931,23 @@ export async function runScraperJob(userId?: string) {
           // Also try to extract HR email for automated outreach
           hrEmail = await extractHrEmail(rawJob.description, userId);
           if (hrEmail) {
-            await logSystem('INFO', `[Automated Outreach] Extracted HR email for "${rawJob.title}": ${hrEmail}`);
+            await logSystem('INFO', `[Automated Outreach] Extracted HR email for "${rawJob.title}" from description: ${hrEmail}`);
+          } else {
+            await logSystem('INFO', `[Automated Outreach] No email in description for "${rawJob.company}". Running free Web Scraper...`);
+            const discovery = await findHREmail(rawJob.company);
+            if (discovery && discovery.email) {
+              hrEmail = discovery.email;
+              await logSystem('INFO', `[Automated Outreach] Successfully scraped HR email for "${rawJob.company}": ${hrEmail}`);
+            }
           }
+        }
+
+        let initialLogs = [];
+        if (hrEmail) {
+            initialLogs.push({ type: 'HR_EMAIL', email: hrEmail, sent: false });
+        }
+        if (tailoredResumeText) {
+            initialLogs.push({ type: 'TAILORED_RESUME', text: tailoredResumeText });
         }
 
         const { data: insertedJob } = await supabase.from('jobs').insert([{
@@ -950,8 +966,7 @@ export async function runScraperJob(userId?: string) {
             stipend: rawJob.stipend,
             match_score: evaluation.matchScore,
             match_reason: evaluation.reason,
-            tailoredResumeText: tailoredResumeText,
-            hrEmail: hrEmail,
+            logs: JSON.stringify(initialLogs),
             status: status
         }]).select('id').single();
         savedCount++;

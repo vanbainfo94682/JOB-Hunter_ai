@@ -71,6 +71,18 @@ export async function applyToJob(jobId: string, userId?: string, dryRun: boolean
   await logSystem('INFO', `Starting stealth auto-apply sequence for "${job.title}" at "${job.company}"...`);
   await supabase.from('jobs').update({ status: 'APPLYING' }).eq('id', jobId);
 
+  // Parse logs to extract HR Email info if available
+  if (job.logs) {
+      try {
+          const parsedLogs = typeof job.logs === 'string' ? JSON.parse(job.logs) : job.logs;
+          const emailLog = parsedLogs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
+          if (emailLog) {
+              (job as any).hrEmail = emailLog.email;
+              (job as any).hrEmailSent = emailLog.sent;
+          }
+      } catch (e) {}
+  }
+
   const sessionLogs: { time: Date; message: string }[] = [];
   const logStep = async (msg: string) => {
     console.log(`[Job ${jobId}] ${msg}`);

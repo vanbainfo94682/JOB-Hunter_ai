@@ -162,9 +162,11 @@ app.get('/api/agent/stream', (req, res) => {
 
 app.get('/api/stats', async (req, res) => {
   try {
-    const totalScraped = await prisma.job.count();
-    const totalApplied = await prisma.job.count({ where: { status: 'APPLIED' } });
-    const totalHrEmailsSent = await prisma.job.count({ where: { hrEmailSent: true } });
+    const { count: totalScraped } = await supabase.from('jobs').select('*', { count: 'exact', head: true });
+    const { count: totalApplied } = await supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('status', 'APPLIED');
+    const { count: totalHrEmailsSent } = await supabase.from('jobs').select('*', { count: 'exact', head: true })
+        .like('logs', '%"HR_EMAIL"%')
+        .like('logs', '%"sent":true%');
     
     // Send actual database metrics
     res.json({
@@ -566,8 +568,19 @@ app.get('/api/jobs', requireAuth, async (req, res) => {
       try {
         if (typeof j.logs === 'string') parsedLogs = JSON.parse(j.logs);
       } catch (e) {}
+      
+      let hrEmail = null;
+      let hrEmailSent = false;
+      const emailLog = parsedLogs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
+      if (emailLog) {
+          hrEmail = emailLog.email;
+          hrEmailSent = emailLog.sent;
+      }
+
       return {
         ...j,
+        hrEmail,
+        hrEmailSent,
         logs: parsedLogs,
       };
     }));
@@ -608,8 +621,12 @@ app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
   try {
     const rawSettings = await getOrCreateUserSettings(getUserId(req));
     if (!rawSettings) return res.json(null);
+    let cookiesData = { linkedinCookies: '', gmailCookies: '' };
     if (rawSettings.cookies_json) {
-      rawSettings.cookies_json = decryptString(rawSettings.cookies_json);
+      try {
+        const decrypted = decryptString(rawSettings.cookies_json);
+        cookiesData = JSON.parse(decrypted);
+      } catch (e) {}
     }
     // Map DB snake_case -> frontend camelCase
     res.json({
@@ -620,8 +637,8 @@ app.get('/api/settings', requireAuth, requirePremium, async (req, res) => {
       includeInternships: rawSettings.include_internships ?? true,
       autoApplyThreshold: rawSettings.auto_apply_threshold ?? 75,
       proxyUrl: rawSettings.proxy_url || '',
-      linkedinCookies: rawSettings.linkedin_cookies ? decryptString(rawSettings.linkedin_cookies) : '',
-      gmailCookies: rawSettings.gmail_cookies ? decryptString(rawSettings.gmail_cookies) : '',
+      linkedinCookies: cookiesData.linkedinCookies || '',
+      gmailCookies: cookiesData.gmailCookies || '',
       openrouterApiKey: rawSettings.openrouter_api_key || '',
       openrouterModels: rawSettings.openrouter_models || '',
       ceoDirective: rawSettings.ceo_directive || '',
@@ -649,14 +666,16 @@ app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
     if (req.body.ceoDirective !== undefined)       payload.ceo_directive = req.body.ceoDirective;
     if (req.body.targetField !== undefined)        payload.target_field = req.body.targetField;
     if (req.body.experienceLevel !== undefined)    payload.experience_level = req.body.experienceLevel;
-    if (req.body.linkedinCookies !== undefined) {
-      payload.linkedin_cookies = encryptString(req.body.linkedinCookies);
-    }
-    if (req.body.gmailCookies !== undefined) {
-      payload.gmail_cookies = encryptString(req.body.gmailCookies);
-    }
     // Ensure settings row exists first
-    await getOrCreateUserSettings(userId);
+    const rawSettings = await getOrCreateUserSettings(userId);
+    let existingCookies: any = {};
+    if (rawSettings.cookies_json) {
+      try { existingCookies = JSON.parse(decryptString(rawSettings.cookies_json)); } catch(e){}
+    }
+    if (req.body.linkedinCookies !== undefined) existingCookies.linkedinCookies = req.body.linkedinCookies;
+    if (req.body.gmailCookies !== undefined) existingCookies.gmailCookies = req.body.gmailCookies;
+    payload.cookies_json = encryptString(JSON.stringify(existingCookies));
+
     const { data: updated, error } = await supabase
       .from('agent_settings')
       .update(payload)
@@ -664,6 +683,12 @@ app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
       .select()
       .single();
     if (error) throw error;
+    
+    let updatedCookies: any = {};
+    if (updated.cookies_json) {
+      try { updatedCookies = JSON.parse(decryptString(updated.cookies_json)); } catch(e){}
+    }
+
     // Return mapped camelCase
     res.json({
       id: updated.id,
@@ -673,8 +698,8 @@ app.put('/api/settings', requireAuth, requirePremium, async (req, res) => {
       includeInternships: updated.include_internships ?? true,
       autoApplyThreshold: updated.auto_apply_threshold ?? 75,
       proxyUrl: updated.proxy_url || '',
-      linkedinCookies: updated.linkedin_cookies ? decryptString(updated.linkedin_cookies) : '',
-      gmailCookies: updated.gmail_cookies ? decryptString(updated.gmail_cookies) : '',
+      linkedinCookies: updatedCookies.linkedinCookies || '',
+      gmailCookies: updatedCookies.gmailCookies || '',
       openrouterApiKey: updated.openrouter_api_key || '',
       openrouterModels: updated.openrouter_models || '',
       ceoDirective: updated.ceo_directive || '',

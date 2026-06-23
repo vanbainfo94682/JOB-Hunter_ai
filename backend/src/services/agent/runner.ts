@@ -1,4 +1,4 @@
-import { prisma, logSystem } from '../../db';
+import { prisma, logSystem, supabase } from '../../db';
 import { runScraperJob } from './scraper';
 import { applyToJob } from './applier';
 
@@ -13,10 +13,10 @@ export async function runAgentCycle() {
   isLoopRunning = true;
 
   try {
-    const settings = await prisma.agentSettings.findFirst();
+    const { data: settings } = await supabase.from('agent_settings').select('*').limit(1).single();
     
     // Check if the agent is enabled by user
-    if (!settings || !settings.isActive) {
+    if (!settings || !settings.is_active) {
       isLoopRunning = false;
       return;
     }
@@ -34,30 +34,28 @@ export async function runAgentCycle() {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const applicationsToday = await prisma.job.count({
-      where: {
-        appliedAt: {
-          gte: todayStart
-        },
-        status: 'APPLIED'
-      }
-    });
+    const { count: applicationsToday } = await supabase.from('jobs')
+        .select('*', { count: 'exact', head: true })
+        .gte('applied_at', todayStart.toISOString())
+        .eq('status', 'APPLIED');
 
-    const limit = settings.dailyLimit || 10;
-    if (applicationsToday >= limit) {
+    const limit = settings.daily_limit || 10;
+    if (applicationsToday !== null && applicationsToday >= limit) {
       await logSystem('WARNING', `Daily application limit (${limit}) reached. Autopilot paused until tomorrow.`);
       isLoopRunning = false;
       return;
     }
 
     // Fetch the highest-matching queued job
-    const nextJob = await prisma.job.findFirst({
-      where: { status: 'QUEUED' },
-      orderBy: { matchScore: 'desc' }
-    });
+    const { data: nextJob } = await supabase.from('jobs')
+      .select('*')
+      .eq('status', 'QUEUED')
+      .order('match_score', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (nextJob) {
-      await logSystem('INFO', `Scheduler Queue: Preparing to apply to "${nextJob.title}" at "${nextJob.company}" (${nextJob.matchScore}% Match Score)...`);
+      await logSystem('INFO', `Scheduler Queue: Preparing to apply to "${nextJob.title}" at "${nextJob.company}" (${nextJob.match_score}% Match Score)...`);
       
       // Execute play-stealth applier (runs dryRun for safety unless user alters behavior)
       const success = await applyToJob(nextJob.id, nextJob.userId || undefined);

@@ -1,6 +1,6 @@
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { prisma, logSystem } from '../../db';
+import { logSystem, supabase } from '../../db';
 import { decryptString } from '../../utils/crypto';
 import { generateTextResponse } from '../openrouter';
 import path from 'path';
@@ -21,12 +21,19 @@ async function typeHumanLike(element: any, text: string) {
 }
 
 export async function sendAutomatedEmail(jobId: string, userId: string, hrEmail: string) {
-  const job = await prisma.job.findUnique({ where: { id: jobId } });
-  const profile = await prisma.userProfile.findFirst({ where: { userId } });
-  const settings = await prisma.agentSettings.findFirst({ where: { userId } });
+  const { data: job } = await supabase.from('jobs').select('*').eq('id', jobId).single();
+  const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();
+  const { data: settings } = await supabase.from('agent_settings').select('*').eq('user_id', userId).single();
 
-  if (!job || !profile || !settings) return;
-  if (!settings.gmailCookies) {
+  let gmailCookies = null;
+  if (settings.cookies_json) {
+    try {
+      const decoded = JSON.parse(decryptString(settings.cookies_json));
+      gmailCookies = decoded.gmailCookies;
+    } catch(e) {}
+  }
+  
+  if (!gmailCookies) {
     await logSystem('WARNING', `Cannot send automated HR email for "${job.title}". No Gmail cookies configured.`);
     return;
   }
@@ -146,10 +153,20 @@ Rules:
       await sendButton.click();
       await logSystem('SUCCESS', `[Automated Email] Successfully sent automated HR outreach to ${hrEmail} for ${job.company}!`);
       
-      await prisma.job.update({
-        where: { id: job.id },
-        data: { hrEmailSent: true }
-      });
+      const { data: currentJob } = await supabase.from('jobs').select('logs').eq('id', job.id).single();
+      let logs = [];
+      if (currentJob && currentJob.logs) {
+         logs = typeof currentJob.logs === 'string' ? JSON.parse(currentJob.logs) : currentJob.logs;
+         const emailLog = logs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
+         if (emailLog) emailLog.sent = true;
+         else logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true });
+      } else {
+         logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true });
+      }
+
+      await supabase.from('jobs').update({
+        logs: JSON.stringify(logs)
+      }).eq('id', job.id);
     } else {
       throw new Error("Send button not found. Could not dispatch email.");
     }
