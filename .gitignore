@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.*
+*.log
+prisma/dev.db
+prisma/dev.db-journal
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
