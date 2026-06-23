@@ -9,6 +9,7 @@ import { generateJSONResponse } from '../openrouter';
 import { execFile } from 'child_process';
 import path from 'path';
 import { decryptString } from '../../utils/crypto';
+import { MasterJobScraper } from './masterJobScraper';
 
 // Attach stealth plugin to playwright-extra
 const chromiumStealth = chromium;
@@ -765,67 +766,10 @@ export async function runScraperJob(userId?: string) {
 
     await logSystem('INFO', `[AI Executive Report] Audited resume. Smart crawler dynamically extracted optimized search keywords: ${searchTerms.join(', ')}`);
 
-    // 1. Fetch remote job listings across multiple premium remote job boards
-    const feeds = [
-      { url: 'https://weworkremotely.com/categories/remote-programming-jobs.rss', platform: 'WeWorkRemotely' },
-      { url: 'https://larajobs.com/feed', platform: 'LaraJobs' },
-      { url: 'https://authenticjobs.com/feed', platform: 'AuthenticJobs' },
-      { url: 'https://www.workingnomads.com/jobs?category=development&format=rss', platform: 'WorkingNomads' },
-      { url: 'https://www.realworkfromanywhere.com/rss.xml', platform: 'RealWorkFromAnywhere' },
-      { url: 'https://remoteok.com/remote-jobs.rss', platform: 'RemoteOK' },
-      { url: 'https://jobspresso.co/feed', platform: 'Jobspresso' },
-      { url: 'https://remote.co/remote-jobs/feed/', platform: 'Remote.co' },
-      { url: 'https://jsremotely.com/feed', platform: 'JSRemotely' },
-      { url: 'https://remoters.net/jobs/feed/', platform: 'Remoters' },
-      { url: 'https://www.python.org/jobs/feed/rss/', platform: 'Python.org' }
-    ];
-
-    // Append search-specific feeds dynamically based on user details
-    for (const term of searchTerms) {
-      feeds.push({ url: `https://himalayas.app/jobs/rss?q=${term}`, platform: 'Himalayas' });
-      if (settings?.includeInternships) {
-        feeds.push({ url: `https://himalayas.app/jobs/rss?q=${term}+intern`, platform: 'Himalayas' });
-      }
-    }
-
-    // Add Internship specific sources if enabled
-    if (settings?.includeInternships) {
-      feeds.push({ url: 'https://weworkremotely.com/categories/remote-internships.rss', platform: 'WeWorkRemotely' });
-      feeds.push({ url: 'https://www.workingnomads.com/jobs?category=internships&format=rss', platform: 'WorkingNomads' });
-      feeds.push({ url: 'https://remoteok.com/remote-internship-jobs.rss', platform: 'RemoteOK' });
-    }
-
-    let allScrapedJobs: RawScrapedJob[] = [];
-    
-    // Scrape RSS Feeds
-    for (const feed of feeds) {
-      if (isScrapingCancelled) {
-        await logSystem('WARNING', 'Scraping was manually cancelled by the user.');
-        break;
-      }
-      try {
-        const feedJobs = await scrapeGenericRss(feed.url, feed.platform);
-        allScrapedJobs = [...allScrapedJobs, ...feedJobs];
-      } catch (err: any) {
-        await logSystem('WARNING', `Failed to scrape feed for ${feed.platform}: ${err?.message || err}`);
-      }
-    }
-
-    // Scrape Remotive via official public API with targeted terms
-    try {
-      const remotiveJobs = await scrapeRemotiveApi(searchTerms);
-      allScrapedJobs = [...allScrapedJobs, ...remotiveJobs];
-    } catch (err: any) {
-      await logSystem('WARNING', `Failed to scrape Remotive API: ${err?.message || err}`);
-    }
-
-    // Custom Python Scraper from listofwebsite.txt
-    try {
-      const customJobs = await scrapeCustomListUrls(searchTerms);
-      allScrapedJobs = [...allScrapedJobs, ...customJobs];
-    } catch (err: any) {
-      await logSystem('WARNING', `Failed to run custom Python scraper: ${err?.message || err}`);
-    }
+    // Instantiate and run the new MasterJobScraper!
+    const scraperInstance = new MasterJobScraper(profile.userId);
+    const isManual = !!userId;
+    const allScrapedJobs = await scraperInstance.scrapeEverything(isManual);
 
     await logSystem('INFO', `Scraper aggregated ${allScrapedJobs.length} total jobs (Remote/On-site/Hybrid) across multiple global boards. Commencing AI evaluation...`);
     let savedCount = 0;
