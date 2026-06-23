@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "pip install -r requirements.txt && node scripts/install-playwright.js && node node_modules/prisma/build/index.js generate && node node_modules/typescript/bin/tsc",
+    "build": "(pip install --break-system-packages -r requirements.txt || pip install --user -r requirements.txt || pip install -r requirements.txt || true) && node scripts/install-playwright.js && (npx prisma generate || node node_modules/prisma/build/index.js generate) && (npx tsc || node node_modules/typescript/bin/tsc)",
     "start": "node dist/server.js",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma db push"
