@@ -58,9 +58,28 @@ export async function applyToJob(jobId: string, userId?: string, dryRun: boolean
   let settings = sData ? { ...sData, targetField: sData.target_field, experienceLevel: sData.experience_level, ceoDirective: sData.ceo_directive } : null;
 
   if (!job) {
-    await logSystem('ERROR', `Application aborted. Job ID "${jobId}" not found.`);
+    await logSystem('ERROR', `Queue Error: Job ID ${jobId} not found in database.`);
     return false;
   }
+
+  let parsedLogs: any[] = [];
+  try {
+    if (typeof job.logs === 'string') parsedLogs = JSON.parse(job.logs);
+    else if (job.logs) parsedLogs = job.logs;
+  } catch (e) {}
+  
+  let hrEmail = null;
+  let hrEmailSent = false;
+  let hrName = undefined;
+  
+  const emailLog = parsedLogs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
+  if (emailLog) {
+      hrEmail = emailLog.email;
+      hrEmailSent = emailLog.sent;
+      hrName = emailLog.name;
+  }
+
+  await logSystem('INFO', `[Applier] Starting autonomous session for "${job.title}" at "${job.company}"...`);
 
   if (!profile) {
     await logSystem('ERROR', `Application aborted for "${job.title}". No User Profile uploaded.`);
@@ -71,17 +90,7 @@ export async function applyToJob(jobId: string, userId?: string, dryRun: boolean
   await logSystem('INFO', `Starting stealth auto-apply sequence for "${job.title}" at "${job.company}"...`);
   await supabase.from('jobs').update({ status: 'APPLYING' }).eq('id', jobId);
 
-  // Parse logs to extract HR Email info if available
-  if (job.logs) {
-      try {
-          const parsedLogs = typeof job.logs === 'string' ? JSON.parse(job.logs) : job.logs;
-          const emailLog = parsedLogs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
-          if (emailLog) {
-              (job as any).hrEmail = emailLog.email;
-              (job as any).hrEmailSent = emailLog.sent;
-          }
-      } catch (e) {}
-  }
+  // Removed redundant log parsing
 
   const sessionLogs: { time: Date; message: string }[] = [];
   const logStep = async (msg: string) => {
@@ -269,8 +278,8 @@ export async function applyToJob(jobId: string, userId?: string, dryRun: boolean
       await logSystem('SUCCESS', `Dry-run application completed successfully for "${job.title}".`);
       
       // Trigger HR Email Outreach if email was found
-      if ((job as any).hrEmail && !job.hrEmailSent) {
-        sendAutomatedEmail(job.id, userId || (job as any).user_id || '', (job as any).hrEmail).catch(e => console.error('[Gmail Automator Error]', e));
+      if (hrEmail && !hrEmailSent) {
+        sendAutomatedEmail(job.id, userId || job.user_id || '', hrEmail, hrName).catch(e => console.error('[Gmail Automator Error]', e));
       }
       
       return true;
@@ -310,8 +319,8 @@ export async function applyToJob(jobId: string, userId?: string, dryRun: boolean
       await logSystem('SUCCESS', `Successfully submitted application to "${job.title}" at "${job.company}"!`);
       
       // Trigger HR Email Outreach if email was found
-      if ((job as any).hrEmail && !job.hrEmailSent) {
-        sendAutomatedEmail(job.id, userId || (job as any).user_id || '', (job as any).hrEmail).catch(e => console.error('[Gmail Automator Error]', e));
+      if (hrEmail && !hrEmailSent) {
+        sendAutomatedEmail(job.id, userId || job.user_id || '', hrEmail, hrName).catch(e => console.error('[Gmail Automator Error]', e));
       }
       
       return true;

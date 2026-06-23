@@ -20,7 +20,7 @@ async function typeHumanLike(element: any, text: string) {
   }
 }
 
-export async function sendAutomatedEmail(jobId: string, userId: string, hrEmail: string) {
+export async function sendAutomatedEmail(jobId: string, userId: string, hrEmail: string, hrName?: string) {
   const { data: job } = await supabase.from('jobs').select('*').eq('id', jobId).single();
   const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();
   const { data: settings } = await supabase.from('agent_settings').select('*').eq('user_id', userId).single();
@@ -48,15 +48,15 @@ Candidate Target Field: ${settings.targetField || 'Tech'}
 Candidate Experience Level: ${settings.experienceLevel || 'Professional'}
 
 Rules:
-1. Subject line should be on the first line prefixed with "SUBJECT: ".
-2. The rest of the message should be the body of the email.
-3. Be persuasive, highlighting the candidate's exact fit for the role based on their experience level and target field.
-4. Keep it relatively brief, no more than 3 short paragraphs.
-5. Do not include placeholders like "[Your Name]", use ${profile.fullName}.
+1. Subject line MUST be on the first line prefixed with "SUBJECT: ".
+2. Limit to 3 short paragraphs.
+3. DO NOT include placeholder brackets like [Company Name]. Replace them with the actual values.
+4. Start the email with "Dear ${hrName || 'Hiring Manager'}," if a name is provided. Otherwise, "Dear Hiring Team,".
+5. End with a polite sign-off.
 `;
 
   let subject = `Application for ${job.title} - ${profile.fullName}`;
-  let body = `Dear Hiring Team,\\n\\nI am writing to express my strong interest in the ${job.title} position at ${job.company}. Please find my resume attached.\\n\\nBest regards,\\n${profile.fullName}`;
+  let body = `Dear ${hrName || 'Hiring Team'},\n\nI am writing to express my strong interest in the ${job.title} position at ${job.company}. Please find my resume attached.\n\nBest regards,\n${profile.fullName}`;
 
   try {
     const aiResponse = await generateTextResponse(prompt, "You are an expert executive career coach writing a cold email to a recruiter.", userId);

@@ -924,6 +924,9 @@ export async function runScraperJob(userId?: string) {
         // Decide status
         let status = 'SCRAPED';
         let hrEmail = null;
+        let hrName = undefined;
+        let hrTitle = undefined;
+
         if (evaluation.matchScore >= threshold) {
           status = 'QUEUED'; // Queue for automatic stealth applying!
           matchCount++;
@@ -937,14 +940,16 @@ export async function runScraperJob(userId?: string) {
             const discovery = await findHREmail(rawJob.company);
             if (discovery && discovery.email) {
               hrEmail = discovery.email;
-              await logSystem('INFO', `[Automated Outreach] Successfully scraped HR email for "${rawJob.company}": ${hrEmail}`);
+              hrName = discovery.name;
+              hrTitle = discovery.title;
+              await logSystem('INFO', `[Automated Outreach] Successfully scraped HR email for "${rawJob.company}": ${hrEmail} (${hrName || 'Unknown'})`);
             }
           }
         }
 
         let initialLogs = [];
         if (hrEmail) {
-            initialLogs.push({ type: 'HR_EMAIL', email: hrEmail, sent: false });
+            initialLogs.push({ type: 'HR_EMAIL', email: hrEmail, name: hrName, title: hrTitle, sent: false });
         }
         if (tailoredResumeText) {
             initialLogs.push({ type: 'TAILORED_RESUME', text: tailoredResumeText });

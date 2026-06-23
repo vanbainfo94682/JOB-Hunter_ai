@@ -1,5 +1,6 @@
 import { prisma, logSystem, supabase } from '../../db';
 import { runScraperJob } from './scraper';
+import { runOmniAggregator } from './omniAggregator';
 import { applyToJob } from './applier';
 
 let isLoopRunning = false;
@@ -27,6 +28,7 @@ export async function runAgentCycle() {
     if (now >= nextScrapeTime) {
       await logSystem('INFO', 'Background Scheduler: Starting scheduled job scraping cycle...');
       await runScraperJob();
+      await runOmniAggregator(); // Run Omni-Aggregator immediately after regular scraper
       nextScrapeTime = now + 60 * 60 * 1000; // Next check in 1 hour
     }
 
@@ -39,7 +41,7 @@ export async function runAgentCycle() {
         .gte('applied_at', todayStart.toISOString())
         .eq('status', 'APPLIED');
 
-    const limit = settings.daily_limit || 10;
+    const limit = settings.daily_limit || 50; // Increased default to 50
     if (applicationsToday !== null && applicationsToday >= limit) {
       await logSystem('WARNING', `Daily application limit (${limit}) reached. Autopilot paused until tomorrow.`);
       isLoopRunning = false;

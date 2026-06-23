@@ -571,16 +571,22 @@ app.get('/api/jobs', requireAuth, async (req, res) => {
       
       let hrEmail = null;
       let hrEmailSent = false;
+      let hrName = undefined;
+      let hrTitle = undefined;
       const emailLog = parsedLogs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
       if (emailLog) {
           hrEmail = emailLog.email;
           hrEmailSent = emailLog.sent;
+          hrName = emailLog.name;
+          hrTitle = emailLog.title;
       }
 
       return {
         ...j,
         hrEmail,
         hrEmailSent,
+        hrName,
+        hrTitle,
         logs: parsedLogs,
       };
     }));
