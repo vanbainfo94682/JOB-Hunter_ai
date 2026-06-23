@@ -1,5 +1,6 @@
 import './playwrightEnv';
 import express from 'express';
+import axios from 'axios';
 import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
@@ -258,6 +259,64 @@ app.post('/api/auth/update-password', requireAuth, async (req, res) => {
     res.json({ message: 'Password updated successfully.' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/auth/google/url', requireAuth, (req, res) => {
+  const userId = getUserId(req);
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  if (!clientId || !redirectUri) return res.status(500).json({ error: 'OAuth not configured on server.' });
+  
+  const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.send');
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=${userId}`;
+  
+  res.json({ url: authUrl });
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return res.status(400).send(`OAuth Error: ${error}`);
+  if (!code || !state) return res.status(400).send('Missing code or state');
+
+  const userId = state as string;
+
+  try {
+    const { data } = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+    });
+
+    const tokens = {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiryDate: Date.now() + data.expires_in * 1000
+    };
+
+    // Save tokens to DB
+    const { data: rawSettings } = await supabase.from('agent_settings').select('cookies_json').eq('user_id', userId).maybeSingle();
+    let existingCookies: any = {};
+    if (rawSettings?.cookies_json) {
+      try { existingCookies = JSON.parse(decryptString(rawSettings.cookies_json)); } catch(e){}
+    }
+    
+    // Replace gmailCookies string with our tokens JSON string
+    existingCookies.gmailCookies = JSON.stringify(tokens);
+    const newJson = encryptString(JSON.stringify(existingCookies));
+    
+    if (rawSettings) {
+      await supabase.from('agent_settings').update({ cookies_json: newJson }).eq('user_id', userId);
+    } else {
+      await supabase.from('agent_settings').insert({ user_id: userId, cookies_json: newJson });
+    }
+
+    res.send('<script>window.opener ? (window.opener.postMessage("oauth_success", "*"), window.close()) : window.location.href = "http://localhost:5173";</script>');
+  } catch (err: any) {
+    console.error('OAuth Exchange Error:', err.response?.data || err.message);
+    res.status(500).send('Failed to exchange Google token.');
   }
 });
 

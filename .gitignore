@@ -9,3 +9,7 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+client_secret_*.json
+frontend/
+frontend2/
+uploads/

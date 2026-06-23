@@ -373,12 +373,23 @@ export async function generateJSONResponse<T>(prompt: string, systemInstruction?
   });
   let jsonStr = raw.trim();
   
-  // Robust JSON extraction: find the outermost curly braces
+  // Robust JSON extraction: find the outermost curly braces or brackets
   const firstBrace = jsonStr.indexOf('{');
+  const firstBracket = jsonStr.indexOf('[');
+  let firstChar = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) firstChar = Math.min(firstBrace, firstBracket);
+  else if (firstBrace !== -1) firstChar = firstBrace;
+  else firstChar = firstBracket;
+
   const lastBrace = jsonStr.lastIndexOf('}');
+  const lastBracket = jsonStr.lastIndexOf(']');
+  let lastChar = -1;
+  if (lastBrace !== -1 && lastBracket !== -1) lastChar = Math.max(lastBrace, lastBracket);
+  else if (lastBrace !== -1) lastChar = lastBrace;
+  else lastChar = lastBracket;
   
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+  if (firstChar !== -1 && lastChar !== -1 && lastChar > firstChar) {
+    jsonStr = jsonStr.substring(firstChar, lastChar + 1);
   }
   
   // Fix common AI JSON errors: trailing commas

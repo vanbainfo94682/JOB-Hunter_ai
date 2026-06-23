@@ -63,6 +63,16 @@ export function computeLocalJobMatchHeuristics(
             }
           }
         }
+        
+        // Strict Role Match Enforcement: If no fields matched at all, hard reject.
+        if (fieldScore === 0) {
+          return {
+            matchScore: 0,
+            pros: [],
+            cons: [`Strict Match Enforcement: Role does not match your selected career fields (${fields.join(', ')})`],
+            reason: `Auto-rejected. You requested to only apply to specific roles, and this job did not match your selected fields.`
+          };
+        }
       }
     } catch (e) {
       // In case string is not JSON array

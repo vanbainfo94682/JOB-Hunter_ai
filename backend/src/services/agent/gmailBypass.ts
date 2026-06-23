@@ -42,23 +42,58 @@ export class GmailLimitBypass {
 
     // Option 1: Gmail API (OAuth token)
     if (credentials.oauthToken || credentials.accessToken) {
+      let token = credentials.accessToken || credentials.oauthToken;
+      const mime = this.buildEmailMime(to, subject, body, attachmentPath);
+      const raw = Buffer.from(mime).toString('base64url');
+
+      const attemptSend = async (accessToken: string) => {
+        return await axios.post('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', 
+          { raw },
+          { headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' } }
+        );
+      };
+
       try {
         await logSystem('INFO', `GmailBypass: Sending email to ${to} via Gmail OAuth API...`);
-        const token = credentials.accessToken || credentials.oauthToken;
-        const mime = this.buildEmailMime(to, subject, body, attachmentPath);
-        const raw = Buffer.from(mime).toString('base64url');
-
-        const response = await axios.post('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', 
-          { raw },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
+        let response;
+        try {
+          response = await attemptSend(token);
+        } catch (err: any) {
+          // If 401 Unauthorized, try to refresh token
+          if (err.response?.status === 401 && credentials.refreshToken) {
+            await logSystem('INFO', `GmailBypass: Access token expired. Refreshing token...`);
+            const refreshRes = await axios.post('https://oauth2.googleapis.com/token', {
+              client_id: process.env.GOOGLE_CLIENT_ID,
+              client_secret: process.env.GOOGLE_CLIENT_SECRET,
+              refresh_token: credentials.refreshToken,
+              grant_type: 'refresh_token',
+            });
+            
+            token = refreshRes.data.access_token;
+            credentials.accessToken = token;
+            if (refreshRes.data.refresh_token) {
+              credentials.refreshToken = refreshRes.data.refresh_token;
             }
+            credentials.expiryDate = Date.now() + refreshRes.data.expires_in * 1000;
+            
+            // Save new tokens to DB
+            const { data: rawSettings } = await supabase.from('agent_settings').select('cookies_json').eq('user_id', this.userId).maybeSingle();
+            let existingCookies: any = {};
+            if (rawSettings?.cookies_json) {
+              try { existingCookies = JSON.parse(decryptString(rawSettings.cookies_json)); } catch(e){}
+            }
+            existingCookies.gmailCookies = JSON.stringify(credentials);
+            const { encryptString } = require('../../utils/crypto');
+            await supabase.from('agent_settings').update({ cookies_json: encryptString(JSON.stringify(existingCookies)) }).eq('user_id', this.userId);
+            
+            // Retry sending
+            response = await attemptSend(token);
+          } else {
+            throw err;
           }
-        );
+        }
 
-        if (response.status === 200 || response.status === 201) {
+        if (response?.status === 200 || response?.status === 201) {
           await logSystem('SUCCESS', `GmailBypass: Successfully sent email to ${to} via Gmail API.`);
           return true;
         }
