@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "(pip install --break-system-packages -r requirements.txt || pip install --user -r requirements.txt || pip install -r requirements.txt || true) && node scripts/install-playwright.js && (npx prisma generate || node node_modules/prisma/build/index.js generate) && (npx tsc || node node_modules/typescript/bin/tsc)",
+    "build": "pip install -r requirements.txt && node scripts/install-playwright.js && node node_modules/prisma/build/index.js generate && node node_modules/typescript/bin/tsc",
     "start": "node dist/server.js",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma db push"
@@ -23,6 +23,7 @@
     "https-proxy-agent": "^9.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^9.0.1",
     "pdf-parse": "^1.1.1",
     "playwright": "^1.44.1",
     "playwright-extra": "^4.3.6",
@@ -36,6 +37,7 @@
     "@types/express": "^4.17.21",
     "@types/multer": "^1.4.11",
     "@types/node": "^20.12.12",
+    "@types/nodemailer": "^8.0.1",
     "@types/pdf-parse": "^1.1.4",
     "@types/uuid": "^9.0.8",
     "prisma": "^5.14.0",

@@ -5,6 +5,7 @@ import { decryptString } from '../../utils/crypto';
 import { generateTextResponse } from '../openrouter';
 import path from 'path';
 import fs from 'fs';
+import { GmailLimitBypass } from './gmailBypass';
 
 const chromiumStealth = chromium;
 chromiumStealth.use(stealthPlugin());
@@ -71,6 +72,43 @@ Rules:
     }
   } catch (err) {
     await logSystem('WARNING', `Failed to generate AI email content. Using fallback template.`);
+  }
+
+  // Generate absolute path for resume
+  let absolutePath: string | undefined = undefined;
+  if (profile.resumePath) {
+    const resolvedPath = path.resolve(process.cwd(), profile.resumePath);
+    if (fs.existsSync(resolvedPath)) {
+      absolutePath = resolvedPath;
+    }
+  }
+
+  // Phase 2: Try Gmail Limit Bypass (API / SMTP)
+  try {
+    const bypass = new GmailLimitBypass(userId);
+    const sent = await bypass.sendEmail(hrEmail, subject, body, absolutePath);
+    if (sent) {
+      // Update job logs & database status
+      const { data: currentJob } = await supabase.from('jobs').select('logs').eq('id', job.id).single();
+      let logs = [];
+      if (currentJob && currentJob.logs) {
+         logs = typeof currentJob.logs === 'string' ? JSON.parse(currentJob.logs) : currentJob.logs;
+         const emailLog = logs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
+         if (emailLog) emailLog.sent = true;
+         else logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true });
+      } else {
+         logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true });
+      }
+
+      await supabase.from('jobs').update({
+        logs: JSON.stringify(logs),
+        hr_email_sent: true
+      }).eq('id', job.id);
+
+      return;
+    }
+  } catch (bypassErr: any) {
+    await logSystem('WARNING', `[Automated Email] Bypass engine error: ${bypassErr.message}. Falling back to browser automation.`);
   }
 
   await logSystem('INFO', `[Automated Email] Initiating Gmail stealth automation to contact ${hrEmail} for ${job.company}...`);
