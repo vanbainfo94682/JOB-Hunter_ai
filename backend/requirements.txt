@@ -1,2 +1,6 @@
 beautifulsoup4
 curl_cffi
+ai4free
+webscout
+requests
+lxml
