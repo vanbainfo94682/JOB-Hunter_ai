@@ -224,6 +224,7 @@ async function callAI({
       const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!content) {
         console.log('WARNING', '[Gemini API] Returned empty response. Falling back to OpenRouter...');
+        console.log('WARNING', '[Gemini API] Returned empty response. Falling back to ai4free...');
       } else {
         // Clean any markdown fences that some models wrap around JSON
         const finalContent = content.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim();
@@ -233,7 +234,54 @@ async function callAI({
     }
   }
 
-  // OpenRouter Flow (Used if selected explicitly OR if Gemini failed)
+  // ---------------------------------------------------------------------------
+  // TIER 2 FALLBACK: ai4free Python Bridge — completely unlimited, zero cost
+  // ---------------------------------------------------------------------------
+  try {
+    const ai4freeResponse = await new Promise<string>((resolve, reject) => {
+      const isDist = __dirname.includes('dist');
+      const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : path.join(__dirname, 'agent');
+      const scriptPath = path.join(basePath, 'ai_evaluator.py');
+      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+      
+      const child = execFile(pythonCmd, [scriptPath], {
+        timeout: 45000, // 45 second max
+        maxBuffer: 5 * 1024 * 1024,
+      }, (error, stdout, stderr) => {
+        if (stderr) console.log('INFO', `[ai4free] ${stderr.trim()}`);
+        if (error) {
+          reject(new Error(`ai4free process error: ${error.message}`));
+          return;
+        }
+        try {
+          const result = JSON.parse(stdout.trim());
+          if (result.success && result.response) {
+            console.log('SUCCESS', `[ai4free] Provider "${result.provider}" responded: ${result.response.length} chars`);
+            // Cache the response
+            aiCache.set(cacheKey, { response: result.response, expiresAt: Date.now() + CACHE_TTL_MS });
+            resolve(result.response);
+          } else {
+            reject(new Error(result.error || 'ai4free returned no response'));
+          }
+        } catch (parseErr) {
+          reject(new Error(`ai4free output parse error: ${stdout.slice(0, 200)}`));
+        }
+      });
+      
+      // Send the prompt via stdin
+      const inputPayload = JSON.stringify({ prompt, systemPrompt });
+      child.stdin?.write(inputPayload);
+      child.stdin?.end();
+    });
+    
+    return ai4freeResponse;
+  } catch (ai4freeError: any) {
+    console.log('WARNING', `[ai4free] ai4free failed: ${ai4freeError.message}. Falling back to OpenRouter pool...`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // TIER 3 FALLBACK: OpenRouter Pool
+  // ---------------------------------------------------------------------------
   let lastError: any = null;
   const attempts = retries ?? (models?.activeModels.length ?? OPENROUTER_MODELS.length);
 
@@ -302,54 +350,7 @@ async function callAI({
     }
   }
 
-  console.log('WARNING', `[OpenRouter] All ${attempts} models failed. Falling back to ai4free Python bridge...`);
-  
-  // ---------------------------------------------------------------------------
-  // TIER 3 FALLBACK: ai4free Python Bridge — completely unlimited, zero cost
-  // ---------------------------------------------------------------------------
-  try {
-    const ai4freeResponse = await new Promise<string>((resolve, reject) => {
-      const isDist = __dirname.includes('dist');
-      const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : path.join(__dirname, 'agent');
-      const scriptPath = path.join(basePath, 'ai_evaluator.py');
-      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-      
-      const child = execFile(pythonCmd, [scriptPath], {
-        timeout: 45000, // 45 second max
-        maxBuffer: 5 * 1024 * 1024,
-      }, (error, stdout, stderr) => {
-        if (stderr) console.log('INFO', `[ai4free] ${stderr.trim()}`);
-        if (error) {
-          reject(new Error(`ai4free process error: ${error.message}`));
-          return;
-        }
-        try {
-          const result = JSON.parse(stdout.trim());
-          if (result.success && result.response) {
-            console.log('SUCCESS', `[ai4free] Provider "${result.provider}" responded: ${result.response.length} chars`);
-            // Cache the response
-            aiCache.set(cacheKey, { response: result.response, expiresAt: Date.now() + CACHE_TTL_MS });
-            resolve(result.response);
-          } else {
-            reject(new Error(result.error || 'ai4free returned no response'));
-          }
-        } catch (parseErr) {
-          reject(new Error(`ai4free output parse error: ${stdout.slice(0, 200)}`));
-        }
-      });
-      
-      // Send the prompt via stdin
-      const inputPayload = JSON.stringify({ prompt, systemPrompt });
-      child.stdin?.write(inputPayload);
-      child.stdin?.end();
-    });
-    
-    return ai4freeResponse;
-  } catch (ai4freeError: any) {
-    console.log('ERROR', `[ai4free] Final fallback also failed: ${ai4freeError.message}`);
-  }
-  
-  throw lastError || new Error('All AI providers exhausted (Gemini + OpenRouter + ai4free)');
+  throw lastError || new Error('All AI providers exhausted (Gemini + ai4free + OpenRouter)');
 }
 
 // ---------------------------------------------------------------------------
