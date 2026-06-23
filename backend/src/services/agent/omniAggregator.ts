@@ -33,12 +33,26 @@ export async function runOmniAggregator() {
     for (const setting of settings) {
       if (!setting.target_field) continue;
       
-      const role = setting.target_field;
-      const experience = setting.experience_level || 'internship';
+      let role = setting.target_field;
+      let experience = setting.experience_level || 'internship';
       
+      try {
+        const rolesArr = JSON.parse(role);
+        if (Array.isArray(rolesArr) && rolesArr.length > 0) {
+          role = rolesArr[Math.floor(Math.random() * rolesArr.length)];
+        }
+      } catch (e) {}
+
+      try {
+        const expArr = JSON.parse(experience);
+        if (Array.isArray(expArr) && expArr.length > 0) {
+          experience = expArr[Math.floor(Math.random() * expArr.length)];
+        }
+      } catch (e) {}
+
       // Build dynamic search query that captures Nauki, Internshala, Wellfound, AICTE, Upwork, Glassdoor, etc.
       // Search engines aggregate all these.
-      const query = `"${role}" "${experience}" jobs OR internships in India OR Remote`;
+      const query = `(${role}) (${experience}) jobs OR internships in India OR Remote`;
       await logSystem('INFO', `[Omni-Aggregator] Querying Search Engine for: ${query}`);
 
       // We use DuckDuckGo HTML or Bing to pull aggregate lists
