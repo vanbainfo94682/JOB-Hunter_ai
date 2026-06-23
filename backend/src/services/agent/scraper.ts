@@ -358,7 +358,9 @@ export async function fetchWithPythonFallback(url: string): Promise<string> {
 
   // Python requests library fallback
   return new Promise((resolve, reject) => {
-    const scriptPath = path.join(process.cwd(), 'src', 'services', 'agent', 'crawler.py');
+    const isDist = __dirname.includes('dist');
+    const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : __dirname;
+    const scriptPath = path.join(basePath, 'crawler.py');
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
     execFile(pythonCmd, [scriptPath, url], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
@@ -656,7 +658,9 @@ export async function scrapeCustomListUrls(searchTerms: string[]): Promise<RawSc
     await logSystem('INFO', `Python Scraper: Fetching ${target.name} -> ${target.url}`);
     try {
       const jobsJsonStr = await new Promise<string>((resolve, reject) => {
-        const scriptPath = path.join(process.cwd(), 'src', 'services', 'agent', 'python_job_scraper.py');
+        const isDist = __dirname.includes('dist');
+        const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : __dirname;
+        const scriptPath = path.join(basePath, 'python_job_scraper.py');
         const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
         execFile(pythonCmd, [scriptPath, target.url], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 }, (error, stdout, stderr) => {
           if (error) {
