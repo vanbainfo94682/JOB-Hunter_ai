@@ -19,6 +19,7 @@ import { generateColdEmail } from './services/emailGenerator';
 import { encryptString, decryptString } from './utils/crypto';
 import crypto, { randomUUID } from 'crypto';
 import { startAgentDaemon } from './services/agent/runner';
+import { torManager } from './services/agent/torManager';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -1175,6 +1176,7 @@ app.post('/api/agent/draft-cold-email', requireAuth, requirePremium, async (req,
 
   app.listen(PORT, () => {
   console.log(`🚀  VANBA Job Hunter AI — Port ${PORT} (Cloud Data Enabled)`);
+  torManager.startTOR().catch(console.error);
   startAgentDaemon();
 });
 

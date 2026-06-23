@@ -118,7 +118,7 @@ export async function runOmniAggregator() {
                     if (setting.linkedin_cookies) {
                         try { cookiesToPass = decryptString(setting.linkedin_cookies); } catch(e) {}
                     }
-                    const discovery = await findHREmail(company, role, undefined, res.url, cookiesToPass);
+                    const discovery = await findHREmail(company, role, undefined, res.url || undefined, cookiesToPass);
                     if (discovery && discovery.email) {
                         hrEmail = discovery.email;
                         hrName = discovery.name;

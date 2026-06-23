@@ -1,6 +1,9 @@
-import { chromium, Page } from 'playwright-extra';
+import { chromium } from 'playwright-extra';
+import { Page } from 'playwright';
 import stealthPlugin = require('puppeteer-extra-plugin-stealth');
 import { logSystem } from '../db';
+import { proxyPool } from './agent/proxyPool';
+import { torManager } from './agent/torManager';
 
 const chromiumStealth = chromium;
 chromiumStealth.use(stealthPlugin());
@@ -34,7 +37,7 @@ async function scrapeLinkedInJobContact(page: Page, jobUrl: string): Promise<{ e
     const pageText = await page.evaluate(() => document.body.innerText);
     const foundEmails = extractEmailsFromText(pageText + ' ' + ldJson);
     
-    const posterName = await page.$eval('.job-poster__name', el => el.textContent?.trim()).catch(() => null);
+    const posterName = await page.$eval('.job-poster__name', (el: any) => el.textContent?.trim()).catch(() => null);
     
     if (foundEmails.length > 0) {
       return { email: foundEmails[0], name: posterName || undefined };
@@ -71,8 +74,8 @@ async function findHREmailViaSearch(page: Page, companyName: string, jobTitle: s
     try {
       await page.goto(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
       
-      const results = await page.$$eval('.result__body', elements => {
-        return elements.map(el => {
+      const results = await page.$$eval('.result__body', (elements: any[]) => {
+        return elements.map((el: any) => {
           const titleEl = el.querySelector('.result__title');
           const snippetEl = el.querySelector('.result__snippet');
           return {
@@ -82,7 +85,7 @@ async function findHREmailViaSearch(page: Page, companyName: string, jobTitle: s
         });
       });
 
-      const combinedText = results.map(r => r.title + ' ' + r.snippet).join(' ');
+      const combinedText = results.map((r: any) => r.title + ' ' + r.snippet).join(' ');
       const emails = extractEmailsFromText(combinedText);
       
       const relevantEmails = emails.filter(e => 
@@ -141,10 +144,10 @@ async function extractFromAuthenticatedLinkedIn(page: Page, companyName: string,
     
     const hrProfiles = await page.evaluate(() => {
       const profiles = document.querySelectorAll('.org-people-profile-card');
-      return Array.from(profiles).filter(p => {
+      return Array.from(profiles).filter((p: any) => {
         const title = p.querySelector('.org-people-profile-card__headline')?.textContent?.toLowerCase() || '';
         return title.includes('hr') || title.includes('recruiter') || title.includes('talent') || title.includes('hiring');
-      }).map(p => ({
+      }).map((p: any) => ({
         name: p.querySelector('.org-people-profile-card__name')?.textContent?.trim()
       }));
     });
@@ -168,7 +171,29 @@ export async function findHREmail(companyName: string, jobTitle: string = 'Softw
   let browser = null;
   try {
     await logSystem('INFO', `Starting Deep HR Discovery (4-Layer) for: ${companyName}`);
-    browser = await chromiumStealth.launch({ headless: true });
+    
+    let proxyConfig = undefined;
+    if (torManager.isReady) {
+       proxyConfig = { server: torManager.getProxyUrl() };
+       await torManager.requestNewIdentity();
+       await logSystem('INFO', `[Proxy] Routing through fresh TOR circuit...`);
+    } else {
+       const proxyUrl = await proxyPool.getProxy();
+       if (proxyUrl) {
+         proxyConfig = { server: proxyUrl.startsWith('http') || proxyUrl.startsWith('socks') ? proxyUrl : `http://${proxyUrl}` };
+         await logSystem('INFO', `[Proxy] Routing through residential proxy...`);
+       }
+    }
+
+    browser = await chromiumStealth.launch({ 
+      headless: true,
+      proxy: proxyConfig,
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
     const context = await browser.newContext();
     const page = await context.newPage();
     
