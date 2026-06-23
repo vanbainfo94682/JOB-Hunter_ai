@@ -3,6 +3,7 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { supabase, logSystem } from '../../db';
 import { extractHrEmail } from './matcher';
 import { findHREmail } from '../hrFinder';
+import { decryptString } from '../../utils/crypto';
 
 const chromiumStealth = chromium;
 chromiumStealth.use(stealthPlugin());
@@ -21,7 +22,7 @@ export async function runOmniAggregator() {
   await logSystem('INFO', '[Omni-Aggregator] Starting global Omni-Aggregator to scrape jobs from all 50+ portals via Search Engine...');
   
   // Get active users settings
-  const { data: settings } = await supabase.from('agent_settings').select('user_id, target_field, experience_level').eq('is_active', true);
+  const { data: settings } = await supabase.from('agent_settings').select('user_id, target_field, experience_level, linkedin_cookies').eq('is_active', true);
   if (!settings || settings.length === 0) return;
 
   let browser = null;
@@ -113,7 +114,11 @@ export async function runOmniAggregator() {
                 let hrName, hrTitle;
 
                 if (!hrEmail) {
-                    const discovery = await findHREmail(company);
+                    let cookiesToPass;
+                    if (setting.linkedin_cookies) {
+                        try { cookiesToPass = decryptString(setting.linkedin_cookies); } catch(e) {}
+                    }
+                    const discovery = await findHREmail(company, role, undefined, res.url, cookiesToPass);
                     if (discovery && discovery.email) {
                         hrEmail = discovery.email;
                         hrName = discovery.name;

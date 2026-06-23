@@ -554,7 +554,7 @@ app.get('/api/jobs', requireAuth, async (req, res) => {
       .or(`user_id.eq.${userId},user_id.is.null`)
       .not('match_score', 'is', null)
       .not('status', 'eq', 'CLOSED')
-      .order('match_score', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false, nullsFirst: false })
       .limit(1000); // 1000 acts as unlimited while preventing browser crashes
 
     let jobs = dbJobs || [];
