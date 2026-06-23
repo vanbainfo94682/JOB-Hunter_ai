@@ -1,72 +1,51 @@
-import { prisma, logSystem, supabase } from '../../db';
+import { logSystem, supabase } from '../../db';
 import { runScraperJob } from './scraper';
-import { runOmniAggregator } from './omniAggregator';
-import { applyToJob } from './applier';
+import { GuaranteeEngine } from './guaranteeEngine';
 
 let isLoopRunning = false;
 let nextScrapeTime = 0;
 
 /**
- * Main coordinator loop representing the 24/7 background AI agent worker.
+ * Coordinator loop representing the 24/7 background worker.
+ * Runs periodically to sweep and process active candidate tasks.
  */
 export async function runAgentCycle() {
   if (isLoopRunning) return;
   isLoopRunning = true;
 
   try {
-    const { data: settings } = await supabase.from('agent_settings').select('*').limit(1).single();
-    
-    // Check if the agent is enabled by user
-    if (!settings || !settings.is_active) {
-      isLoopRunning = false;
-      return;
-    }
-
     const now = Date.now();
 
-    // 1. Scraping cycle (runs once every 60 minutes)
+    // 1. Scraping & Application cycle (runs once every 60 minutes)
     if (now >= nextScrapeTime) {
-      await logSystem('INFO', 'Background Scheduler: Starting scheduled job scraping cycle...');
-      await runScraperJob();
-      await runOmniAggregator(); // Run Omni-Aggregator immediately after regular scraper
-      nextScrapeTime = now + 60 * 60 * 1000; // Next check in 1 hour
-    }
-
-    // 2. Application cycle (processes one application per cycle to stay rate-limited & avoid block warnings)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const { count: applicationsToday } = await supabase.from('jobs')
-        .select('*', { count: 'exact', head: true })
-        .gte('applied_at', todayStart.toISOString())
-        .eq('status', 'APPLIED');
-
-    const limit = settings.daily_limit || 50; // Increased default to 50
-    if (applicationsToday !== null && applicationsToday >= limit) {
-      await logSystem('WARNING', `Daily application limit (${limit}) reached. Autopilot paused until tomorrow.`);
-      isLoopRunning = false;
-      return;
-    }
-
-    // Fetch the highest-matching queued job
-    const { data: nextJob } = await supabase.from('jobs')
-      .select('*')
-      .eq('status', 'QUEUED')
-      .order('match_score', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (nextJob) {
-      await logSystem('INFO', `Scheduler Queue: Preparing to apply to "${nextJob.title}" at "${nextJob.company}" (${nextJob.match_score}% Match Score)...`);
+      await logSystem('INFO', 'Background Coordinator: Starting scheduled scraping & auto-apply cycle...');
       
-      // Execute play-stealth applier (runs dryRun for safety unless user alters behavior)
-      const success = await applyToJob(nextJob.id, nextJob.userId || undefined);
-      
-      if (success) {
-        await logSystem('SUCCESS', `Scheduler Queue: Successfully processed application for "${nextJob.title}".`);
+      // Get all active user settings
+      const { data: activeSettings } = await supabase.from('agent_settings')
+        .select('user_id')
+        .eq('is_active', true);
+
+      if (activeSettings && activeSettings.length > 0) {
+        await logSystem('INFO', `Background Coordinator: Found ${activeSettings.length} active autopilot profile(s).`);
+        for (const setting of activeSettings) {
+          try {
+            await logSystem('INFO', `Background Coordinator: Processing cycles for candidate: ${setting.user_id}`);
+            
+            // Step A: Trigger scraper to harvest new listings
+            await runScraperJob(setting.user_id);
+            
+            // Step B: Trigger guarantee engine to run application pipeline loops
+            const engine = new GuaranteeEngine(setting.user_id);
+            await engine.ensureDailyTarget();
+          } catch (userErr: any) {
+            await logSystem('ERROR', `Background Coordinator: Failed cycle execution for candidate ${setting.user_id}: ${userErr.message}`);
+          }
+        }
       } else {
-        await logSystem('ERROR', `Scheduler Queue: Application process failed for "${nextJob.title}".`);
+        await logSystem('INFO', 'Background Coordinator: No active autopilot profiles found.');
       }
+      
+      nextScrapeTime = now + 60 * 60 * 1000; // Schedule next run in 1 hour
     }
 
   } catch (error: any) {

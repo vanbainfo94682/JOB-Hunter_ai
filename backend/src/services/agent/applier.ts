@@ -1,14 +1,10 @@
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import path from 'path';
 import fs from 'fs';
 import { supabase, logSystem, prisma } from '../../db';
 import { generateApplicationMaterials } from './matcher';
 import { sendAutomatedEmail } from './gmailAutomator';
 import { decryptString } from '../../utils/crypto';
-
-const chromiumStealth = chromium;
-chromiumStealth.use(stealthPlugin());
+import { browserPool } from './browserPool';
 
 // Ensure the screenshots directory exists
 const SCREENSHOTS_DIR = path.join(__dirname, '..', '..', '..', 'public', 'screenshots');
@@ -108,41 +104,10 @@ export async function applyToJob(jobId: string, userId?: string, dryRun: boolean
     userId
   );
 
-  let browser;
+  let page = null;
   try {
-    const launchOptions: any = {
-      headless: true, // Run headless for 24/7 background task, but stealth mimics real window.
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled'
-      ]
-    };
-
-    if (settings?.proxyUrl) {
-      launchOptions.proxy = { server: settings.proxyUrl };
-      await logStep('Routing automation connection through residential proxy server...');
-    }
-
-    browser = await chromiumStealth.launch(launchOptions);
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 850 },
-      deviceScaleFactor: 1
-    });
-
-    if (settings?.linkedinCookies) {
-      try {
-        const decryptedCookiesJson = decryptString(settings.linkedinCookies);
-        const cookies = JSON.parse(decryptedCookiesJson);
-        await context.addCookies(cookies);
-        await logStep('Rehydrated session storage with saved cookies.');
-      } catch (err) {
-        await logStep('Warning: Failed to import session cookies.');
-      }
-    }
-
-    const page = await context.newPage();
+    // Obtain page from global browser pool (No cookies, fully anonymous)
+    page = await browserPool.getPage(settings?.proxyUrl || undefined);
     await logStep(`Navigating to application URL: ${job.url}`);
     
     // Set a natural timeout
@@ -336,8 +301,8 @@ export async function applyToJob(jobId: string, userId?: string, dryRun: boolean
     await logSystem('ERROR', `Auto-apply session failed for "${job.title}": ${error?.message || error}`);
     return false;
   } finally {
-    if (browser) {
-      await browser.close();
+    if (page) {
+      await browserPool.closePage(page);
     }
   }
 }

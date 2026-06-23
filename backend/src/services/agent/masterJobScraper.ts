@@ -1,8 +1,5 @@
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { supabase, logSystem, isMncCompany } from '../../db';
-import { calculateJobMatch, computeLocalJobMatchHeuristics, improveResumeForJob, extractHrEmail } from './matcher';
-import { applyToJob } from './applier';
+import { supabase, logSystem } from '../../db';
+import { extractHrEmail } from './matcher';
 import { findHREmail } from '../hrFinder';
 import { generateJSONResponse } from '../openrouter';
 import { execFile } from 'child_process';
@@ -15,9 +12,7 @@ import { proxyPool } from './proxyPool';
 import { torManager } from './torManager';
 import { shouldScrapeRightNow } from './scheduler';
 import { playwrightQueue } from '../../utils/playwrightQueue';
-
-const chromiumStealth = chromium;
-chromiumStealth.use(stealthPlugin());
+import { browserPool } from './browserPool';
 
 export interface RawScrapedJob {
   title: string;
@@ -75,7 +70,6 @@ export class MasterJobScraper {
       autoApplyThreshold: sData.auto_apply_threshold,
       includeInternships: sData.include_internships,
       proxyUrl: sData.proxy_url,
-      linkedinCookies: sData.linkedin_cookies,
       isActive: sData.is_active
     } : null;
 
@@ -396,7 +390,7 @@ export class MasterJobScraper {
   }
 
   /**
-   * LinkedIn X-Ray via DuckDuckGo search + Playwright detail crawler
+   * LinkedIn X-Ray via DuckDuckGo search + browserPool detail crawler
    */
   private async scrapeLinkedInXRay(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
@@ -419,7 +413,6 @@ export class MasterJobScraper {
           if (rawUrl) {
             const cleanUrl = this.cleanDuckDuckGoUrl(rawUrl);
             if (cleanUrl.includes('linkedin.com/jobs/view/')) {
-              // Normalize URL
               const match = cleanUrl.match(/linkedin\.com\/jobs\/view\/\d+/);
               if (match) {
                 jobUrls.add('https://' + match[0]);
@@ -434,47 +427,28 @@ export class MasterJobScraper {
       await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
     }
 
-    // Step 2: Navigate to each collected LinkedIn job page stealthily
-    const urlList = Array.from(jobUrls).slice(0, 15); // Limit to top 15 matches to avoid rate limits
+    const urlList = Array.from(jobUrls).slice(0, 15);
     await logSystem('INFO', `[LinkedIn X-Ray] Found ${urlList.length} candidate LinkedIn job listings. Executing stealth details crawl...`);
 
     for (const url of urlList) {
       if (this.isCancelled) break;
 
       const jobData = await playwrightQueue.enqueue(async () => {
-        let browser = null;
+        let page = null;
         try {
-          let proxyConfig = undefined;
+          let proxyUrlString = undefined;
           if (torManager.isReady) {
-             proxyConfig = { server: torManager.getProxyUrl() };
+             proxyUrlString = torManager.getProxyUrl();
              await torManager.requestNewIdentity();
           } else {
              const pUrl = await proxyPool.getProxy();
              if (pUrl) {
-               proxyConfig = { server: pUrl.startsWith('http') || pUrl.startsWith('socks') ? pUrl : `http://${pUrl}` };
+               proxyUrlString = pUrl.startsWith('http') || pUrl.startsWith('socks') ? pUrl : `http://${pUrl}`;
              }
           }
 
-          const launchOptions: any = {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-          };
-          if (proxyConfig) launchOptions.proxy = proxyConfig;
-
-          browser = await chromiumStealth.launch(launchOptions);
-          const context = await browser.newContext({
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-          });
-
-          // Inject cookies if available
-          if (this.settings?.linkedinCookies) {
-            try {
-              const cookies = JSON.parse(decryptString(this.settings.linkedinCookies));
-              await context.addCookies(cookies);
-            } catch (e) {}
-          }
-
-          const page = await context.newPage();
+          // Fetch page from global browser pool (No cookies, fully anonymous X-Ray)
+          page = await browserPool.getPage(proxyUrlString);
           await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
           await page.waitForTimeout(1000 + Math.random() * 2000);
 
@@ -507,7 +481,7 @@ export class MasterJobScraper {
         } catch (e: any) {
           return null;
         } finally {
-          if (browser) await browser.close();
+          if (page) await browserPool.closePage(page);
         }
       });
 
@@ -521,7 +495,7 @@ export class MasterJobScraper {
   }
 
   /**
-   * Google for Jobs scraping using Playwright
+   * Google for Jobs scraping using browserPool
    */
   private async scrapeGoogleJobs(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
@@ -533,31 +507,21 @@ export class MasterJobScraper {
       await logSystem('INFO', `[GoogleJobs] Searching Google for Jobs: "${query}"`);
 
       const googleJobsResult = await playwrightQueue.enqueue(async () => {
-        let browser = null;
+        let page = null;
         try {
-          let proxyConfig = undefined;
+          let proxyUrlString = undefined;
           if (torManager.isReady) {
-             proxyConfig = { server: torManager.getProxyUrl() };
+             proxyUrlString = torManager.getProxyUrl();
              await torManager.requestNewIdentity();
           } else {
              const pUrl = await proxyPool.getProxy();
              if (pUrl) {
-               proxyConfig = { server: pUrl.startsWith('http') || pUrl.startsWith('socks') ? pUrl : `http://${pUrl}` };
+               proxyUrlString = pUrl.startsWith('http') || pUrl.startsWith('socks') ? pUrl : `http://${pUrl}`;
              }
           }
 
-          const launchOptions: any = {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-          };
-          if (proxyConfig) launchOptions.proxy = proxyConfig;
-
-          browser = await chromiumStealth.launch(launchOptions);
-          const context = await browser.newContext({
-            userAgent: 'Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36',
-            viewport: { width: 375, height: 812 }
-          });
-          const page = await context.newPage();
+          // Use browser pool
+          page = await browserPool.getPage(proxyUrlString);
 
           const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&ibp=htl;jobs`;
           await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -603,7 +567,7 @@ export class MasterJobScraper {
           await logSystem('WARNING', `[GoogleJobs] Playwright crawl failed for query "${query}": ${e.message}`);
           return [];
         } finally {
-          if (browser) await browser.close();
+          if (page) await browserPool.closePage(page);
         }
       });
 
@@ -616,7 +580,7 @@ export class MasterJobScraper {
   }
 
   /**
-   * Internshala scraper
+   * Internshala scraper using browserPool
    */
   private async scrapeInternshala(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
@@ -629,13 +593,9 @@ export class MasterJobScraper {
         const url = `https://internshala.com/${type}s/${term.toLowerCase().replace(/\s+/g, '-')}-${type}`;
         
         const pageJobs = await playwrightQueue.enqueue(async () => {
-          let browser = null;
+          let page = null;
           try {
-            browser = await chromiumStealth.launch({ headless: true });
-            const context = await browser.newContext({
-              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-            });
-            const page = await context.newPage();
+            page = await browserPool.getPage();
             
             // Set Indian language headers
             await page.setExtraHTTPHeaders({
@@ -678,7 +638,7 @@ export class MasterJobScraper {
                   isRemote: card.location?.toLowerCase().includes('work from home') || false,
                   workType: card.location?.toLowerCase().includes('work from home') ? 'REMOTE' : 'ONSITE',
                   isInternship: type === 'internship',
-                  stipend: hrEmail // temporarily store email reference or pass on
+                  stipend: hrEmail
                 });
               }
             }
@@ -686,7 +646,7 @@ export class MasterJobScraper {
           } catch (err: any) {
             return [];
           } finally {
-            if (browser) await browser.close();
+            if (page) await browserPool.closePage(page);
           }
         });
 
@@ -865,7 +825,7 @@ export class MasterJobScraper {
             const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : __dirname;
             const scriptPath = path.join(basePath, 'python_job_scraper.py');
             const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-            execFile(pythonCmd, [target.url], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 }, (error, stdout) => {
+            execFile(pythonCmd, [scriptPath, target.url], { maxBuffer: 10 * 1024 * 1024, timeout: 30000 }, (error, stdout) => {
               if (error) reject(error);
               else resolve(stdout);
             });
