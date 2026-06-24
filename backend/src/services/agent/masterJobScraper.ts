@@ -42,9 +42,6 @@ export class MasterJobScraper {
     this.isCancelled = true;
   }
 
-  /**
-   * Initializes user profile and settings.
-   */
   async init(): Promise<boolean> {
     const pReq = supabase.from('user_profiles').select('*').eq('user_id', this.userId);
     const { data: pData } = await pReq.maybeSingle();
@@ -76,9 +73,6 @@ export class MasterJobScraper {
     return true;
   }
 
-  /**
-   * Helper: Collapses XML/HTML to structured text
-   */
   private cleanDescription(rawDesc: string): string {
     if (!rawDesc) return '';
     let decoded = rawDesc;
@@ -211,10 +205,6 @@ export class MasterJobScraper {
     return ddgUrl;
   }
 
-  /**
-   * Main scrape orchestrator.
-   * @param isManual if true, bypasses peak hours scheduler block
-   */
   async scrapeEverything(isManual: boolean = false): Promise<RawScrapedJob[]> {
     if (!this.profile) {
       const inited = await this.init();
@@ -226,23 +216,22 @@ export class MasterJobScraper {
 
     await logSystem('INFO', `[MasterScraper] Initiating multi-source scrape cycle. Target keywords: ${searchTerms.join(', ')}`);
 
-    // Determine platforms to hit based on schedule
     const platformsToHit: string[] = [];
     if (isManual) {
-      platformsToHit.push('Indeed', 'LinkedIn', 'GoogleJobs', 'Naukri', 'Internshala');
+      platformsToHit.push('Indeed', 'LinkedIn', 'GoogleJobs', 'Naukri', 'Internshala', 'YCStartups', 'Wellfound');
     } else {
       if (shouldScrapeRightNow('Indeed')) platformsToHit.push('Indeed');
       if (shouldScrapeRightNow('LinkedIn')) platformsToHit.push('LinkedIn');
       if (shouldScrapeRightNow('GoogleJobs')) platformsToHit.push('GoogleJobs');
       if (shouldScrapeRightNow('Naukri')) platformsToHit.push('Naukri');
       if (shouldScrapeRightNow('Internshala')) platformsToHit.push('Internshala');
+      if (shouldScrapeRightNow('YCStartups')) platformsToHit.push('YCStartups');
+      if (shouldScrapeRightNow('Wellfound')) platformsToHit.push('Wellfound');
     }
 
-    // Always hit RSS Feeds since they are low-overhead and don't trigger blocks easily
     const rssJobs = await this.scrapeRssFeeds(searchTerms);
     allJobs.push(...rssJobs);
 
-    // Hit scheduled/requested aggregators
     for (const platform of platformsToHit) {
       if (this.isCancelled) break;
       await logSystem('INFO', `[MasterScraper] Running scraper for platform: ${platform}`);
@@ -258,19 +247,23 @@ export class MasterJobScraper {
           const googleJobs = await this.scrapeGoogleJobs(searchTerms);
           allJobs.push(...googleJobs);
         } else if (platform === 'Naukri') {
-          // Fallback RSS/Scraper for Indian region
           const naukriJobs = await this.scrapeNaukriFallback(searchTerms);
           allJobs.push(...naukriJobs);
         } else if (platform === 'Internshala') {
           const internshalaJobs = await this.scrapeInternshala(searchTerms);
           allJobs.push(...internshalaJobs);
+        } else if (platform === 'YCStartups') {
+          const ycJobs = await this.scrapeYCombinatorStartups(searchTerms);
+          allJobs.push(...ycJobs);
+        } else if (platform === 'Wellfound') {
+          const wfJobs = await this.scrapeWellfound(searchTerms);
+          allJobs.push(...wfJobs);
         }
       } catch (err: any) {
         await logSystem('WARNING', `[MasterScraper] Platform ${platform} scraper encountered errors: ${err.message}`);
       }
     }
 
-    // Hit Remotive API & listofwebsite.txt custom scraper
     try {
       const remotiveJobs = await this.scrapeRemotiveApi(searchTerms);
       allJobs.push(...remotiveJobs);
@@ -285,16 +278,14 @@ export class MasterJobScraper {
       await logSystem('WARNING', `[MasterScraper] Custom website list scrape failed: ${e.message}`);
     }
 
-    // Return all scraped raw jobs
     return allJobs;
   }
 
-  /**
-   * Generates search keywords using User Profile and OpenRouter AI.
-   */
   private async generateSearchKeywords(): Promise<string[]> {
     let searchTerms: string[] = [];
     try {
+      const isEntryLevel = this.settings?.experienceLevel && JSON.parse(this.settings.experienceLevel).some((l: string) => l.toLowerCase().includes('entry'));
+      
       const prompt = `
         Analyze the following candidate profile and career preferences.
         Generate a JSON object with a single key "keywords" containing an array of 3 to 5 highly specific job search keywords that combine these career fields and experience levels to use on job boards.
@@ -303,6 +294,7 @@ export class MasterJobScraper {
         Experience Level (Seniority): ${this.settings?.experienceLevel || 'Entry Level'}
         User Custom Directives: ${this.settings?.ceoDirective || 'None'}
         Fallback Resume Skills (Only use to enrich keywords if fields are empty): ${this.profile.skills}
+        ${isEntryLevel ? 'IMPORTANT: The candidate is Entry Level. Also include at least one keyword variant with "Internship" or "Intern" to capture internship listings.' : ''}
       `;
       const aiResponse = await generateJSONResponse<{ keywords: string[] }>(prompt, "You are a professional tech recruiter AI. Return strictly valid JSON.");
       if (aiResponse && aiResponse.keywords && Array.isArray(aiResponse.keywords)) {
@@ -331,11 +323,6 @@ export class MasterJobScraper {
     return searchTerms;
   }
 
-  // =============== platform scrapers ===============
-
-  /**
-   * Indeed RSS Feed scraper
-   */
   private async scrapeIndeed(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
     
@@ -376,27 +363,20 @@ export class MasterJobScraper {
             }
           });
           
-          if (jobs.length > 0) break; // If one rss feed succeeded, skip the next URL
-        } catch (err: any) {
-          // fail silently to try next URL
-        }
+          if (jobs.length > 0) break;
+        } catch (err: any) {}
       }
       
-      // Jitter delay between search terms
       await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     }
     
     return jobs;
   }
 
-  /**
-   * LinkedIn X-Ray via DuckDuckGo search + browserPool detail crawler
-   */
   private async scrapeLinkedInXRay(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
     const jobUrls = new Set<string>();
 
-    // Step 1: Collect LinkedIn job URLs using X-Ray queries on DuckDuckGo
     for (const term of searchTerms) {
       if (this.isCancelled) break;
 
@@ -447,7 +427,6 @@ export class MasterJobScraper {
              }
           }
 
-          // Fetch page from global browser pool (No cookies, fully anonymous X-Ray)
           page = await browserPool.getPage(proxyUrlString);
           await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
           await page.waitForTimeout(1000 + Math.random() * 2000);
@@ -494,9 +473,6 @@ export class MasterJobScraper {
     return jobs;
   }
 
-  /**
-   * Google for Jobs scraping using browserPool
-   */
   private async scrapeGoogleJobs(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
 
@@ -520,7 +496,6 @@ export class MasterJobScraper {
              }
           }
 
-          // Use browser pool
           page = await browserPool.getPage(proxyUrlString);
 
           const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&ibp=htl;jobs`;
@@ -579,9 +554,6 @@ export class MasterJobScraper {
     return jobs;
   }
 
-  /**
-   * Internshala scraper using browserPool
-   */
   private async scrapeInternshala(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
     
@@ -597,7 +569,6 @@ export class MasterJobScraper {
           try {
             page = await browserPool.getPage();
             
-            // Set Indian language headers
             await page.setExtraHTTPHeaders({
               'Accept-Language': 'en-IN,en;q=0.9,hi;q=0.8'
             });
@@ -658,9 +629,146 @@ export class MasterJobScraper {
     return jobs;
   }
 
-  /**
-   * Naukri Fallback Aggregator (DuckDuckGo Search extraction)
-   */
+  private async scrapeYCombinatorStartups(searchTerms: string[]): Promise<RawScrapedJob[]> {
+    const jobs: RawScrapedJob[] = [];
+    
+    for (const term of searchTerms) {
+      if (this.isCancelled) break;
+
+      const queries = [
+        `site:ycombinator.com/jobs "${term}"`,
+        `site:wellfound.com/jobs "${term}" startup`,
+        `site:workatastartup.com "${term}"`
+      ];
+
+      for (const query of queries) {
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
+        try {
+          await logSystem('INFO', `[YC/Startups] DuckDuckGo X-Ray query: ${query}`);
+          const html = await this.fetchWithPythonFallback(searchUrl);
+          const $ = cheerio.load(html);
+          
+          $('.result__body').each((_, el) => {
+            const title = $(el).find('.result__title').text().trim();
+            const rawUrl = $(el).find('.result__url').attr('href');
+            const snippet = $(el).find('.result__snippet').text().trim();
+            
+            if (rawUrl && title) {
+              const cleanUrl = this.cleanDuckDuckGoUrl(rawUrl);
+              const { title: parsedTitle, company } = this.parseTitleAndCompany(title, 'YCStartups', '');
+              const internDetails = this.detectInternshipDetails(parsedTitle, snippet);
+
+              jobs.push({
+                title: parsedTitle,
+                company: company || 'Startup',
+                location: 'Remote',
+                url: cleanUrl,
+                description: this.cleanDescription(snippet),
+                platform: 'YCStartups',
+                isRemote: true,
+                workType: 'REMOTE',
+                ...internDetails
+              });
+            }
+          });
+        } catch (err: any) {
+          await logSystem('WARNING', `[YC/Startups] DuckDuckGo crawl failed for query "${query}": ${err.message}`);
+        }
+
+        await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
+      }
+
+      const ycDirectUrl = 'https://ycombinator.com/jobs';
+      const wellfoundUrl = `https://wellfound.com/jobs?query=${encodeURIComponent(term)}`;
+
+      for (const startupUrl of [ycDirectUrl, wellfoundUrl]) {
+        try {
+          const html = await this.fetchWithPythonFallback(startupUrl);
+          const $ = cheerio.load(html);
+          
+          $('a[href*="/jobs/"], a[href*="/jobs?"], .job_link').each((_, el) => {
+            const href = $(el).attr('href') || '';
+            const text = $(el).text().trim();
+            if (text && href) {
+              const fullUrl = href.startsWith('http') ? href : `https://wellfound.com${href}`;
+              const { title: parsedTitle, company } = this.parseTitleAndCompany(text, 'YCStartups', '');
+              const internDetails = this.detectInternshipDetails(parsedTitle, text);
+
+              jobs.push({
+                title: parsedTitle,
+                company: company || 'Startup',
+                location: 'Remote',
+                url: fullUrl,
+                description: text,
+                platform: 'YCStartups',
+                isRemote: true,
+                workType: 'REMOTE',
+                ...internDetails
+              });
+            }
+          });
+        } catch (err) {}
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+
+    return jobs;
+  }
+
+  private async scrapeWellfound(searchTerms: string[]): Promise<RawScrapedJob[]> {
+    const jobs: RawScrapedJob[] = [];
+    
+    for (const term of searchTerms) {
+      if (this.isCancelled) break;
+
+      const queries = [
+        `site:wellfound.com/jobs "${term}"`,
+        `site:angel.co/jobs "${term}" startup remote`
+      ];
+
+      for (const query of queries) {
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
+        try {
+          await logSystem('INFO', `[Wellfound] DuckDuckGo X-Ray query: ${query}`);
+          const html = await this.fetchWithPythonFallback(searchUrl);
+          const $ = cheerio.load(html);
+          
+          $('.result__body').each((_, el) => {
+            const title = $(el).find('.result__title').text().trim();
+            const rawUrl = $(el).find('.result__url').attr('href');
+            const snippet = $(el).find('.result__snippet').text().trim();
+            
+            if (rawUrl && title) {
+              const cleanUrl = this.cleanDuckDuckGoUrl(rawUrl);
+              const { title: parsedTitle, company } = this.parseTitleAndCompany(title, 'Wellfound', '');
+              const internDetails = this.detectInternshipDetails(parsedTitle, snippet);
+
+              jobs.push({
+                title: parsedTitle,
+                company: company || 'Wellfound Startup',
+                location: 'Remote',
+                url: cleanUrl,
+                description: this.cleanDescription(snippet),
+                platform: 'Wellfound',
+                isRemote: true,
+                workType: 'REMOTE',
+                ...internDetails
+              });
+            }
+          });
+        } catch (err: any) {
+          await logSystem('WARNING', `[Wellfound] DuckDuckGo crawl failed for query "${query}": ${err.message}`);
+        }
+
+        await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
+      }
+    }
+
+    return jobs;
+  }
+
   private async scrapeNaukriFallback(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
     for (const term of searchTerms) {
@@ -701,9 +809,6 @@ export class MasterJobScraper {
     return jobs;
   }
 
-  /**
-   * RSS board scraper (WeWorkRemotely, Himalayas, WorkingNomads, LaraJobs, JSRemotely etc.)
-   */
   private async scrapeRssFeeds(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const jobs: RawScrapedJob[] = [];
     const feeds = [
@@ -714,7 +819,9 @@ export class MasterJobScraper {
       { url: 'https://remoteok.com/remote-jobs.rss', platform: 'RemoteOK' },
       { url: 'https://jobspresso.co/feed', platform: 'Jobspresso' },
       { url: 'https://remote.co/remote-jobs/feed/', platform: 'Remote.co' },
-      { url: 'https://jsremotely.com/feed', platform: 'JSRemotely' }
+      { url: 'https://jsremotely.com/feed', platform: 'JSRemotely' },
+      { url: 'https://remotive.com/startup-jobs.rss', platform: 'RemotiveStartups' },
+      { url: 'https://himalayas.app/jobs/rss?tags=startup', platform: 'HimalayasStartups' }
     ];
 
     if (this.settings?.includeInternships) {
@@ -759,9 +866,6 @@ export class MasterJobScraper {
     return jobs;
   }
 
-  /**
-   * Remotive API Scraper
-   */
   private async scrapeRemotiveApi(searchTerms: string[]): Promise<RawScrapedJob[]> {
     let allJobs: RawScrapedJob[] = [];
     for (const term of searchTerms) {
@@ -794,9 +898,6 @@ export class MasterJobScraper {
     return allJobs;
   }
 
-  /**
-   * Custom list of websites scraper
-   */
   private async scrapeCustomListUrls(searchTerms: string[]): Promise<RawScrapedJob[]> {
     const listPath = path.join(__dirname, '../../../../listofwebsite.txt');
     let allJobs: RawScrapedJob[] = [];

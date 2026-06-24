@@ -6,12 +6,13 @@ import { generateTextResponse } from './openrouter';
  * Uses AI to write a personalized cold email for a specific job and profile.
  */
 
-export async function generateColdEmail(jobTitle: string, companyName: string, hrEmail: string, profileDetails: any): Promise<string> {
+export async function generateColdEmail(jobTitle: string, companyName: string, hrEmail: string, profileDetails: any, extraContext?: string): Promise<string> {
   try {
     console.log('INFO', `Drafting personalized cold email for ${jobTitle} at ${companyName}`);
     
     const skills = Array.isArray(profileDetails.skills) ? profileDetails.skills.join(', ') : profileDetails.skills;
     const name = profileDetails.fullName || 'Candidate';
+    const contextLine = extraContext ? `\nAdditional Context: ${extraContext}` : '';
     
     const prompt = `
       You are an expert career coach and copywriter.
@@ -23,6 +24,7 @@ export async function generateColdEmail(jobTitle: string, companyName: string, h
       - HR Email: ${hrEmail}
       - Candidate Name: ${name}
       - Candidate Skills: ${skills}
+      ${contextLine}
       
       Rules:
       1. Keep it under 150 words.
@@ -31,6 +33,7 @@ export async function generateColdEmail(jobTitle: string, companyName: string, h
       4. End with a clear Call to Action (CTA) for a brief chat.
       5. Do not include subject line in the body, just the email body itself.
       6. No placeholder text like [Insert Name], use the provided variables.
+      7. If the context mentions startup/internship, adapt tone accordingly.
     `;
 
     const result = await generateTextResponse(prompt, 'gemini-1.5-flash');

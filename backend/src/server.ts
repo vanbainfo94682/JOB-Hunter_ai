@@ -313,10 +313,63 @@ app.get('/api/auth/google/callback', async (req, res) => {
       await supabase.from('agent_settings').insert({ user_id: userId, cookies_json: newJson });
     }
 
-    res.send('<script>window.opener ? (window.opener.postMessage("oauth_success", "*"), window.close()) : window.location.href = "http://localhost:5173";</script>');
+    res.send(`<script>window.opener ? (window.opener.postMessage("oauth_success", "*"), window.close()) : window.location.href = "${req.headers.origin || 'http://localhost:3000'}";</script>`);
   } catch (err: any) {
     console.error('OAuth Exchange Error:', err.response?.data || err.message);
     res.status(500).send('Failed to exchange Google token.');
+  }
+});
+
+app.get('/api/auth/google/status', requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { data: settings } = await supabase.from('agent_settings').select('cookies_json').eq('user_id', userId).maybeSingle();
+    
+    let isConnected = false;
+    let connectedEmail = null;
+    
+    if (settings?.cookies_json) {
+      try {
+        const decrypted = decryptString(settings.cookies_json);
+        const cookies = JSON.parse(decrypted);
+        const gmailCookies = cookies.gmailCookies;
+        if (gmailCookies) {
+          try {
+            const parsed = JSON.parse(gmailCookies);
+            if (parsed.accessToken || parsed.oauthToken) {
+              isConnected = true;
+            }
+          } catch (e) {
+            isConnected = true;
+          }
+        }
+      } catch (e) {}
+    }
+
+    const { data: user } = await supabase.from('app_users').select('email').eq('id', userId).single();
+    const { data: profile } = await supabase.from('user_profiles').select('professional_email').eq('user_id', userId).maybeSingle();
+    const senderEmail = profile?.professional_email || user?.email || null;
+
+    res.json({ isConnected, senderEmail });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/google/disconnect', requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { data: rawSettings } = await supabase.from('agent_settings').select('cookies_json').eq('user_id', userId).maybeSingle();
+    let existingCookies: any = {};
+    if (rawSettings?.cookies_json) {
+      try { existingCookies = JSON.parse(decryptString(rawSettings.cookies_json)); } catch(e){}
+    }
+    delete existingCookies.gmailCookies;
+    const newJson = encryptString(JSON.stringify(existingCookies));
+    await supabase.from('agent_settings').update({ cookies_json: newJson }).eq('user_id', userId);
+    res.json({ message: 'Google disconnected successfully.' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -634,12 +687,14 @@ app.get('/api/jobs', requireAuth, async (req, res) => {
       let hrEmailSent = false;
       let hrName = undefined;
       let hrTitle = undefined;
+      let hrEmailSentAt = undefined;
       const emailLog = parsedLogs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
       if (emailLog) {
           hrEmail = emailLog.email;
           hrEmailSent = emailLog.sent;
           hrName = emailLog.name;
           hrTitle = emailLog.title;
+          hrEmailSentAt = emailLog.sentAt;
       }
 
       return {
@@ -648,6 +703,7 @@ app.get('/api/jobs', requireAuth, async (req, res) => {
         hrEmailSent,
         hrName,
         hrTitle,
+        hrEmailSentAt,
         logs: parsedLogs,
       };
     }));

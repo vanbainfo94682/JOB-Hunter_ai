@@ -2,6 +2,7 @@ import { supabase, logSystem } from '../../db';
 import { MasterJobScraper } from './masterJobScraper';
 import { GuaranteedAutoPilot } from './autopilot';
 import { GmailLimitBypass } from './gmailBypass';
+import { runScraperJob, isScrapingActive } from './scraper';
 
 export class GuaranteeEngine {
   private userId: string;
@@ -39,6 +40,9 @@ export class GuaranteeEngine {
   async ensureDailyTarget(): Promise<void> {
     await logSystem('INFO', `[GuaranteeEngine] Initiating ensureDailyTarget loop for user ${this.userId} (Target: ${this.DAILY_TARGET})`);
     
+    // Force isActive=true so downstream scrapers/appliers know autopilot is running
+    await supabase.from('agent_settings').update({ is_active: true }).eq('user_id', this.userId).catch(() => {});
+    
     let applied = await this.getTodayApplicationCount();
     await logSystem('INFO', `[GuaranteeEngine] Current successful applications count today: ${applied}`);
 
@@ -47,6 +51,73 @@ export class GuaranteeEngine {
       await this.sendMorningReport(applied);
       return;
     }
+
+    let loopIterations = 0;
+    const maxIterations = 5;
+
+    while (applied < this.DAILY_TARGET && loopIterations < maxIterations) {
+      loopIterations++;
+      await logSystem('INFO', `[GuaranteeEngine] Autopilot loop iteration ${loopIterations}/${maxIterations}. Applied: ${applied}/${this.DAILY_TARGET}`);
+
+      // 1. Fetch all queued jobs (any match score)
+      const { data: queuedJobs } = await supabase.from('jobs')
+        .select('*')
+        .eq('status', 'QUEUED')
+        .eq('user_id', this.userId)
+        .order('match_score', { ascending: false });
+
+      if (queuedJobs && queuedJobs.length > 0) {
+        await logSystem('INFO', `[GuaranteeEngine] Found ${queuedJobs.length} queued jobs. Processing...`);
+        for (const job of queuedJobs) {
+          if (applied >= this.DAILY_TARGET) break;
+
+          const result = await this.autopilot.processJob(job.id);
+          if (result.success) {
+            applied++;
+            await logSystem('SUCCESS', `[GuaranteeEngine] Application target progress: ${applied}/${this.DAILY_TARGET}`);
+          }
+        }
+      }
+
+      // 2. Lower threshold to harvest more jobs (any score > 15)
+      if (applied < this.DAILY_TARGET) {
+        await logSystem('INFO', `[GuaranteeEngine] Queued jobs exhausted. Lowering threshold to match score > 15...`);
+        const { data: fallbackJobs } = await supabase.from('jobs')
+          .select('id, match_score')
+          .eq('status', 'SCRAPED')
+          .eq('user_id', this.userId)
+          .gt('match_score', 15);
+
+        if (fallbackJobs && fallbackJobs.length > 0) {
+          await logSystem('INFO', `[GuaranteeEngine] Upgrading ${fallbackJobs.length} fallback jobs to QUEUED status...`);
+          const ids = fallbackJobs.map(j => j.id);
+          await supabase.from('jobs').update({ status: 'QUEUED' }).in('id', ids);
+          continue;
+        }
+      }
+
+      // 3. Broadened search + scoring pipeline
+      if (applied < this.DAILY_TARGET) {
+        await logSystem('INFO', `[GuaranteeEngine] Fallback jobs exhausted. Broadening search...`);
+        if (isScrapingActive) {
+          await logSystem('INFO', `[GuaranteeEngine] Scraper already running. Waiting for it to finish...`);
+          // Wait for the in-progress scrape to complete (poll every 5s, timeout 2 minutes)
+          const pollStart = Date.now();
+          while (isScrapingActive && Date.now() - pollStart < 120000) {
+            await new Promise(r => setTimeout(r, 5000));
+          }
+          await logSystem('INFO', `[GuaranteeEngine] Scraper finished (or timed out). Re-checking database...`);
+        } else {
+          await runScraperJob(this.userId, true);
+          await logSystem('INFO', `[GuaranteeEngine] Full scrape + scoring pipeline triggered. Waiting for jobs to populate...`);
+          await new Promise(r => setTimeout(r, 10000));
+        }
+      }
+    }
+
+    await logSystem('SUCCESS', `[GuaranteeEngine] Target cycle finished. Final applications dispatched: ${applied}`);
+    await this.sendMorningReport(applied);
+  }
 
     let loopIterations = 0;
     const maxIterations = 3; // Prevent infinite loops if there are no more jobs on the web
@@ -98,13 +169,13 @@ export class GuaranteeEngine {
       // 3. If STILL not enough, broaden search keywords and trigger scrape again
       if (applied < this.DAILY_TARGET) {
         await logSystem('INFO', `[GuaranteeEngine] Fallback jobs exhausted. Broadening search terms and trigger active scrape...`);
-        const scraper = new MasterJobScraper(this.userId);
         
-        // This runs a manual-like override scrape using broad terms
-        const rawScraped = await scraper.scrapeEverything(true);
-        await logSystem('INFO', `[GuaranteeEngine] Broadened search harvested ${rawScraped.length} raw jobs. Triggering scoring pipeline...`);
+        // Run the full scoring pipeline so jobs are actually saved and scored in DB
+        // Run the full scoring pipeline so jobs are actually saved and scored in DB
+        await runScraperJob(this.userId, true);
+        await logSystem('INFO', `[GuaranteeEngine] Full scrape + scoring pipeline triggered. Waiting for jobs to populate in DB...`);
 
-        // Wait a few seconds for database insertions/scoring to catch up in the main scraper cycle
+        // Wait a few seconds for database insertions/scoring to catch up
         await new Promise(r => setTimeout(r, 10000));
         
         // Next loop cycle will automatically read these newly scraped jobs from the database

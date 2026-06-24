@@ -12,12 +12,10 @@ export class BrowserPool {
   private useCount = 0;
 
   async getPage(proxyUrl?: string): Promise<Page> {
-    // If browser doesn't exist or has been reused more than 50 times, restart it to prevent memory leaks
     if (!this.browser || this.useCount >= 50) {
       await this.restartBrowser(proxyUrl);
     }
 
-    // Refresh context every 10 requests to clear cache/session cookies and prevent fingerprinting
     if (this.useCount % 10 === 0 || !this.context) {
       if (this.context) {
         await this.context.close().catch(() => {});
@@ -30,11 +28,29 @@ export class BrowserPool {
         deviceScaleFactor: 1
       };
 
-      this.context = await this.browser!.newContext(launchContextOptions);
+      try {
+        this.context = await this.browser!.newContext(launchContextOptions);
+      } catch (err: any) {
+        await this.restartBrowser(proxyUrl);
+        this.context = await this.browser!.newContext(launchContextOptions);
+      }
     }
 
     this.useCount++;
-    return await this.context!.newPage();
+    try {
+      return await this.context!.newPage();
+    } catch (err: any) {
+      await this.restartBrowser(proxyUrl);
+      const launchContextOptions: any = {
+        userAgent: this.randomUA(),
+        viewport: { width: 1280, height: 800 },
+        locale: 'en-US',
+        deviceScaleFactor: 1
+      };
+      this.context = await this.browser!.newContext(launchContextOptions);
+      this.useCount++;
+      return await this.context.newPage();
+    }
   }
 
   async closePage(page: Page): Promise<void> {

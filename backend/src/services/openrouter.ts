@@ -240,7 +240,7 @@ async function callAI({
   try {
     const ai4freeResponse = await new Promise<string>((resolve, reject) => {
       const isDist = __dirname.includes('dist');
-      const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : path.join(__dirname, 'agent');
+      const basePath = isDist ? path.join(__dirname, '../../src/services/agent') : path.join(__dirname, 'agent');
       const scriptPath = path.join(basePath, 'ai_evaluator.py');
       const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
       

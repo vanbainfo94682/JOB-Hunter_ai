@@ -697,11 +697,12 @@ export function cancelScraping() {
 }
 
 /**
- * Runs a full scraping iteration - per-user mode.
- * @param userId   Supabase auth UUID. When omitted (called by background daemon), falls back to the first available user.
- */
-export async function runScraperJob(userId?: string) {
-  if (isScrapingActive) {
+  * Runs a full scraping iteration - per-user mode.
+  * @param userId   Supabase auth UUID. When omitted (called by background daemon), falls back to the first available user.
+  * @param force    If true, bypasses the isScrapingActive guard and runs anyway.
+  */
+export async function runScraperJob(userId?: string, force: boolean = false) {
+  if (isScrapingActive && !force) {
     await logSystem('WARNING', 'Scraper is already running in the background. Ignoring duplicate trigger.');
     return;
   }
@@ -920,10 +921,9 @@ export async function runScraperJob(userId?: string) {
         }]).select('id').single();
         savedCount++;
         
-        // AUTO APPLY PIPELINE: If user is active, has cookie setup, and job scored above threshold
-        if (status === 'QUEUED' && settings?.is_active && settings?.linkedin_cookies && insertedJob) {
+        // AUTO APPLY PIPELINE: If user is active, and job scored above threshold
+        if (status === 'QUEUED' && settings?.is_active && insertedJob) {
           await logSystem('INFO', `[Autopilot] Queueing automatic stealth application for "${rawJob.title}"...`);
-          // Run it asynchronously so we don't block the scraper loop
           applyToJob(insertedJob.id, userId, false).catch(e => console.error('[Autopilot Apply Error]', e));
         }
 

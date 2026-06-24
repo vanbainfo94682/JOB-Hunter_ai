@@ -14,7 +14,12 @@ export async function sendAutomatedEmail(jobId: string, userId: string, hrEmail:
     return;
   }
 
-  // Generate Email Content dynamically based on experience and target field
+  const isStartupTarget = job.platform === 'YCStartups' || job.platform === 'Wellfound' || job.description.toLowerCase().includes('startup');
+  const isInternshipTarget = job.title.toLowerCase().includes('intern') || job.description.toLowerCase().includes('internship') || job.is_internship === true;
+
+  const contextHint = isStartupTarget ? ' The company is a startup/fast-growing company — express enthusiasm for fast-paced, high-impact environments.' : '';
+  const internshipHint = isInternshipTarget ? ' This is an internship position — express eagerness to learn, contribute, and grow with the team.' : '';
+
   const prompt = `
     Write a highly professional, concise, and compelling cold outreach email to a recruiter or hiring manager.
     The candidate is applying for the position of "${job.title}" at "${job.company}".
@@ -22,6 +27,10 @@ export async function sendAutomatedEmail(jobId: string, userId: string, hrEmail:
     Candidate Skills: ${profile.skills}
     Candidate Target Field: ${settings.targetField || 'Tech'}
     Candidate Experience Level: ${settings.experienceLevel || 'Professional'}
+    ${contextHint}
+    ${internshipHint}
+    ${isStartupTarget ? 'Reference the candidate\'s interest in startups, agility, and building something impactful.' : ''}
+    ${isInternshipTarget ? 'Reference the candidate\'s focus on internships and hands-on learning opportunities.' : ''}
 
     Rules:
     1. Subject line MUST be on the first line prefixed with "SUBJECT: ".
@@ -49,10 +58,9 @@ export async function sendAutomatedEmail(jobId: string, userId: string, hrEmail:
     await logSystem('WARNING', `Failed to generate AI email content. Using fallback template.`);
   }
 
-  // Generate absolute path for resume
   let absolutePath: string | undefined = undefined;
-  if (profile.resumePath) {
-    const resolvedPath = path.resolve(process.cwd(), profile.resumePath);
+  if (profile.resume_url) {
+    const resolvedPath = path.resolve(process.cwd(), profile.resume_url);
     if (fs.existsSync(resolvedPath)) {
       absolutePath = resolvedPath;
     }
@@ -65,16 +73,19 @@ export async function sendAutomatedEmail(jobId: string, userId: string, hrEmail:
     const sent = await bypass.sendEmail(hrEmail, subject, body, absolutePath);
     
     if (sent) {
-      // Update job logs & database status
-      const { data: currentJob } = await supabase.from('jobs').select('logs').eq('id', job.id).single();
+       const { data: currentJob } = await supabase.from('jobs').select('logs').eq('id', job.id).single();
       let logs = [];
       if (currentJob && currentJob.logs) {
          logs = typeof currentJob.logs === 'string' ? JSON.parse(currentJob.logs) : currentJob.logs;
          const emailLog = logs.find((l: any) => typeof l === 'object' && l.type === 'HR_EMAIL');
-         if (emailLog) emailLog.sent = true;
-         else logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true });
+         if (emailLog) {
+           emailLog.sent = true;
+           emailLog.sentAt = new Date().toISOString();
+         } else {
+           logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true, sentAt: new Date().toISOString() });
+         }
       } else {
-         logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true });
+         logs.push({ type: 'HR_EMAIL', email: hrEmail, sent: true, sentAt: new Date().toISOString() });
       }
 
       await supabase.from('jobs').update({
