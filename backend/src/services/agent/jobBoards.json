@@ -1,0 +1,2162 @@
+[
+  {
+    "name": "LinkedIn Jobs",
+    "url": "https://www.linkedin.com/jobs",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Indeed",
+    "url": "https://www.indeed.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Glassdoor",
+    "url": "https://www.glassdoor.com/Job",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "ZipRecruiter",
+    "url": "https://www.ziprecruiter.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Monster",
+    "url": "https://www.monster.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "CareerBuilder",
+    "url": "https://www.careerbuilder.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "SimplyHired",
+    "url": "https://www.simplyhired.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Jooble",
+    "url": "https://jooble.org",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Jobrapido",
+    "url": "https://www.jobrapido.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Adzuna",
+    "url": "https://www.adzuna.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Talent.com",
+    "url": "https://www.talent.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Ladders",
+    "url": "https://www.theladders.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Naukri",
+    "url": "https://www.naukri.com",
+    "category": "India Job Board"
+  },
+  {
+    "name": "Foundit",
+    "url": "https://www.foundit.in",
+    "category": "India Job Board"
+  },
+  {
+    "name": "Shine",
+    "url": "https://www.shine.com",
+    "category": "India Job Board"
+  },
+  {
+    "name": "TimesJobs",
+    "url": "https://www.timesjobs.com",
+    "category": "India Job Board"
+  },
+  {
+    "name": "Freshersworld",
+    "url": "https://www.freshersworld.com",
+    "category": "India Job Board"
+  },
+  {
+    "name": "Internshala",
+    "url": "https://internshala.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "Unstop",
+    "url": "https://unstop.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "Apna",
+    "url": "https://apna.co",
+    "category": "India Job Board"
+  },
+  {
+    "name": "WorkIndia",
+    "url": "https://www.workindia.in",
+    "category": "India Job Board"
+  },
+  {
+    "name": "Cutshort",
+    "url": "https://cutshort.io",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Wellfound",
+    "url": "https://wellfound.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Remote OK",
+    "url": "https://remoteok.com",
+    "category": "Remote Jobs"
+  },
+  {
+    "name": "We Work Remotely",
+    "url": "https://weworkremotely.com",
+    "category": "Remote Jobs"
+  },
+  {
+    "name": "FlexJobs",
+    "url": "https://www.flexjobs.com",
+    "category": "Various"
+  },
+  {
+    "name": "Remote.co",
+    "url": "https://remote.co",
+    "category": "Various"
+  },
+  {
+    "name": "Remotive",
+    "url": "https://remotive.com",
+    "category": "Various"
+  },
+  {
+    "name": "Working Nomads",
+    "url": "https://www.workingnomads.com",
+    "category": "Various"
+  },
+  {
+    "name": "Jobspresso",
+    "url": "https://jobspresso.co",
+    "category": "Various"
+  },
+  {
+    "name": "Pangian",
+    "url": "https://pangian.com",
+    "category": "Various"
+  },
+  {
+    "name": "Himalayas",
+    "url": "https://himalayas.app",
+    "category": "Various"
+  },
+  {
+    "name": "Dice",
+    "url": "https://www.dice.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Hired",
+    "url": "https://hired.com",
+    "category": "Various"
+  },
+  {
+    "name": "Arc",
+    "url": "https://arc.dev",
+    "category": "Various"
+  },
+  {
+    "name": "Turing",
+    "url": "https://turing.com",
+    "category": "Various"
+  },
+  {
+    "name": "Guru",
+    "url": "https://www.guru.com",
+    "category": "Freelance Platform"
+  },
+  {
+    "name": "Upwork",
+    "url": "https://www.upwork.com",
+    "category": "Freelance Platform"
+  },
+  {
+    "name": "Fiverr",
+    "url": "https://www.fiverr.com",
+    "category": "Freelance Platform"
+  },
+  {
+    "name": "Freelancer",
+    "url": "https://www.freelancer.com",
+    "category": "Freelance Platform"
+  },
+  {
+    "name": "PeoplePerHour",
+    "url": "https://www.peopleperhour.com",
+    "category": "Freelance Platform"
+  },
+  {
+    "name": "Toptal",
+    "url": "https://www.toptal.com",
+    "category": "Freelance Platform"
+  },
+  {
+    "name": "Truelancer",
+    "url": "https://www.truelancer.com",
+    "category": "Freelance Platform"
+  },
+  {
+    "name": "Seek",
+    "url": "https://www.seek.com.au",
+    "category": "Various"
+  },
+  {
+    "name": "Jora",
+    "url": "https://www.jora.com",
+    "category": "Various"
+  },
+  {
+    "name": "Reed",
+    "url": "https://www.reed.co.uk",
+    "category": "Various"
+  },
+  {
+    "name": "TotalJobs",
+    "url": "https://www.totaljobs.com",
+    "category": "Various"
+  },
+  {
+    "name": "CV-Library",
+    "url": "https://www.cv-library.co.uk",
+    "category": "Various"
+  },
+  {
+    "name": "JobStreet",
+    "url": "https://www.jobstreet.com",
+    "category": "Various"
+  },
+  {
+    "name": "JobsDB",
+    "url": "https://hk.jobsdb.com",
+    "category": "Various"
+  },
+  {
+    "name": "StepStone",
+    "url": "https://www.stepstone.com",
+    "category": "Various"
+  },
+  {
+    "name": "Xing Jobs",
+    "url": "https://www.xing.com/jobs",
+    "category": "Various"
+  },
+  {
+    "name": "eFinancialCareers",
+    "url": "https://www.efinancialcareers.com",
+    "category": "Various"
+  },
+  {
+    "name": "WayUp",
+    "url": "https://www.wayup.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "Handshake",
+    "url": "https://joinhandshake.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "Prosple",
+    "url": "https://prosple.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "Forage",
+    "url": "https://www.theforage.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "RippleMatch",
+    "url": "https://ripplematch.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "Parker Dewey",
+    "url": "https://www.parkerdewey.com",
+    "category": "Internship Portal"
+  },
+  {
+    "name": "Startup Jobs",
+    "url": "https://startup.jobs",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Y Combinator Jobs",
+    "url": "https://www.ycombinator.com/jobs",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "VentureLoop",
+    "url": "https://ventureloop.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Otta",
+    "url": "https://otta.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Welcome to the Jungle",
+    "url": "https://www.welcometothejungle.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "F6S Jobs",
+    "url": "https://www.f6s.com/jobs",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Hirect",
+    "url": "https://hirect.in",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Instahyre",
+    "url": "https://www.instahyre.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Hasjob",
+    "url": "https://hasjob.co",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Startupers",
+    "url": "https://startupers.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Tech Startup Jobs",
+    "url": "https://techstartupjobs.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Work In Startups",
+    "url": "https://workinstartups.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "EU Startups Jobs",
+    "url": "https://jobs.eu-startups.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Berlin Startup Jobs",
+    "url": "https://berlinstartupjobs.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Crunchboard",
+    "url": "https://www.crunchboard.com",
+    "category": "Startup Jobs"
+  },
+  {
+    "name": "Greenhouse Job Board",
+    "url": "https://boards.greenhouse.io",
+    "category": "Various"
+  },
+  {
+    "name": "Lever Jobs",
+    "url": "https://jobs.lever.co",
+    "category": "Various"
+  },
+  {
+    "name": "SmartRecruiters",
+    "url": "https://jobs.smartrecruiters.com",
+    "category": "Various"
+  },
+  {
+    "name": "Ashby Jobs",
+    "url": "https://jobs.ashbyhq.com",
+    "category": "Various"
+  },
+  {
+    "name": "Google Careers",
+    "url": "https://careers.google.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Microsoft Careers",
+    "url": "https://careers.microsoft.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Amazon Jobs",
+    "url": "https://www.amazon.jobs",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Apple Careers",
+    "url": "https://jobs.apple.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Meta Careers",
+    "url": "https://www.metacareers.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Netflix Jobs",
+    "url": "https://jobs.netflix.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "NVIDIA Careers",
+    "url": "https://www.nvidia.com/en-us/about-nvidia/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Intel Careers",
+    "url": "https://jobs.intel.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Cisco Careers",
+    "url": "https://jobs.cisco.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Oracle Careers",
+    "url": "https://careers.oracle.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "IBM Careers",
+    "url": "https://www.ibm.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "SAP Careers",
+    "url": "https://www.sap.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Salesforce Careers",
+    "url": "https://careers.salesforce.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Adobe Careers",
+    "url": "https://careers.adobe.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Atlassian Careers",
+    "url": "https://www.atlassian.com/company/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "ServiceNow Careers",
+    "url": "https://careers.servicenow.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Uber Careers",
+    "url": "https://www.uber.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Airbnb Careers",
+    "url": "https://careers.airbnb.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Spotify Careers",
+    "url": "https://www.lifeatspotify.com/jobs",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "PayPal Careers",
+    "url": "https://careers.pypl.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Stripe Careers",
+    "url": "https://stripe.com/jobs",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Accenture Careers",
+    "url": "https://www.accenture.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Deloitte Careers",
+    "url": "https://www.deloitte.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "PwC Careers",
+    "url": "https://www.pwc.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "EY Careers",
+    "url": "https://www.ey.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "KPMG Careers",
+    "url": "https://kpmg.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "McKinsey Careers",
+    "url": "https://www.mckinsey.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "BCG Careers",
+    "url": "https://careers.bcg.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Bain Careers",
+    "url": "https://www.bain.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Infosys Careers",
+    "url": "https://www.infosys.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "TCS Careers",
+    "url": "https://www.tcs.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Wipro Careers",
+    "url": "https://careers.wipro.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "HCLTech Careers",
+    "url": "https://www.hcltech.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Cognizant Careers",
+    "url": "https://careers.cognizant.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Capgemini Careers",
+    "url": "https://www.capgemini.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Tech Mahindra Careers",
+    "url": "https://careers.techmahindra.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Siemens Careers",
+    "url": "https://jobs.siemens.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Bosch Careers",
+    "url": "https://careers.bosch.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Shell Careers",
+    "url": "https://www.shell.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Unilever Careers",
+    "url": "https://careers.unilever.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "P&G Careers",
+    "url": "https://www.pgcareers.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Nestle Careers",
+    "url": "https://www.nestle.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "PepsiCo Careers",
+    "url": "https://www.pepsicojobs.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Coca-Cola Careers",
+    "url": "https://careers.coca-colacompany.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Samsung Careers",
+    "url": "https://www.samsung.com/global/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Sony Careers",
+    "url": "https://www.sony.com/en/SonyInfo/Careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Toyota Careers",
+    "url": "https://careers.toyota.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "BMW Careers",
+    "url": "https://www.bmwgroup.jobs",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Mercedes-Benz Careers",
+    "url": "https://group.mercedes-benz.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Boeing Careers",
+    "url": "https://jobs.boeing.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Qualcomm Careers",
+    "url": "https://www.qualcomm.com/company/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "AMD Careers",
+    "url": "https://careers.amd.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Broadcom Careers",
+    "url": "https://careers.broadcom.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Micron Careers",
+    "url": "https://careers.micron.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Texas Instruments Careers",
+    "url": "https://careers.ti.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "VMware Careers",
+    "url": "https://careers.vmware.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Snowflake Careers",
+    "url": "https://careers.snowflake.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Databricks Careers",
+    "url": "https://www.databricks.com/company/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Workday Careers",
+    "url": "https://workday.wd5.myworkdayjobs.com/Workday",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "HubSpot Careers",
+    "url": "https://www.hubspot.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Zoom Careers",
+    "url": "https://careers.zoom.us",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Dropbox Careers",
+    "url": "https://jobs.dropbox.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Shopify Careers",
+    "url": "https://www.shopify.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Twilio Careers",
+    "url": "https://www.twilio.com/company/jobs",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Slack Careers",
+    "url": "https://slack.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "LinkedIn Careers",
+    "url": "https://careers.linkedin.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Indeed Careers",
+    "url": "https://www.indeed.jobs",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Mastercard Careers",
+    "url": "https://careers.mastercard.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Visa Careers",
+    "url": "https://jobs.visa.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "American Express Careers",
+    "url": "https://www.americanexpress.com/en-us/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "HSBC Careers",
+    "url": "https://www.hsbc.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Barclays Careers",
+    "url": "https://search.jobs.barclays",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Deutsche Bank Careers",
+    "url": "https://careers.db.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "UBS Careers",
+    "url": "https://www.ubs.com/global/en/careers.html",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Citi Careers",
+    "url": "https://jobs.citi.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Wells Fargo Careers",
+    "url": "https://www.wellsfargojobs.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "JLL Careers",
+    "url": "https://careers.jll.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Schneider Electric Careers",
+    "url": "https://careers.se.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Honeywell Careers",
+    "url": "https://careers.honeywell.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "3M Careers",
+    "url": "https://careers.3m.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Philips Careers",
+    "url": "https://www.careers.philips.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "GE Aerospace Careers",
+    "url": "https://jobs.gecareers.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "ABB Careers",
+    "url": "https://careers.abb",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Hitachi Careers",
+    "url": "https://careers.hitachi.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Lenovo Careers",
+    "url": "https://jobs.lenovo.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Dell Careers",
+    "url": "https://jobs.dell.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "HP Careers",
+    "url": "https://jobs.hp.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Xerox Careers",
+    "url": "https://www.xeroxcareers.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Red Hat Careers",
+    "url": "https://www.redhat.com/en/jobs",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "MongoDB Careers",
+    "url": "https://www.mongodb.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Confluent Careers",
+    "url": "https://careers.confluent.io",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Palantir Careers",
+    "url": "https://www.palantir.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Cloudflare Careers",
+    "url": "https://www.cloudflare.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "CrowdStrike Careers",
+    "url": "https://www.crowdstrike.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Okta Careers",
+    "url": "https://www.okta.com/company/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "DocuSign Careers",
+    "url": "https://www.docusign.com/company/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Intuit Careers",
+    "url": "https://jobs.intuit.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Autodesk Careers",
+    "url": "https://www.autodesk.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Electronic Arts Careers",
+    "url": "https://www.ea.com/careers",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "Unity Careers",
+    "url": "https://careers.unity.com",
+    "category": "MNC Career Portal"
+  },
+  {
+    "name": "HigherEdJobs",
+    "url": "https://www.higheredjobs.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "Academic Positions",
+    "url": "https://academicpositions.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "Nature Careers",
+    "url": "https://www.nature.com/naturecareers",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "Science Careers",
+    "url": "https://jobs.sciencecareers.org",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "Times Higher Education Jobs",
+    "url": "https://www.timeshighereducation.com/unijobs",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "ResearchGate Jobs",
+    "url": "https://www.researchgate.net/jobs",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "Euraxess",
+    "url": "https://euraxess.ec.europa.eu/jobs",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "FindAPhD",
+    "url": "https://www.findaphd.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "FindAPostDoc",
+    "url": "https://www.findapostdoc.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "UniversityJobs",
+    "url": "https://www.universityjobs.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "Chronicle Vitae",
+    "url": "https://jobs.chronicle.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "Academic Keys",
+    "url": "https://academickeys.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "H-Net Job Guide",
+    "url": "https://www.h-net.org/jobs",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "PostdocJobs",
+    "url": "https://www.postdocjobs.com",
+    "category": "Academic Jobs"
+  },
+  {
+    "name": "National Career Service India",
+    "url": "https://www.ncs.gov.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "FreeJobAlert",
+    "url": "https://www.freejobalert.com",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "Sarkari Naukri",
+    "url": "https://www.sarkarinaukri.com",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "UPSC",
+    "url": "https://www.upsc.gov.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "SSC",
+    "url": "https://ssc.gov.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "Railway Recruitment Boards",
+    "url": "https://www.rrbcdg.gov.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "Indian Army Jobs",
+    "url": "https://joinindianarmy.nic.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "Indian Navy Careers",
+    "url": "https://www.joinindiannavy.gov.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "Indian Air Force Careers",
+    "url": "https://indianairforce.nic.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "DRDO Careers",
+    "url": "https://www.drdo.gov.in/careers",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "ISRO Careers",
+    "url": "https://www.isro.gov.in/Careers.html",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "BHEL Careers",
+    "url": "https://careers.bhel.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "BEL Careers",
+    "url": "https://bel-india.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "NTPC Careers",
+    "url": "https://careers.ntpc.co.in",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "GAIL Careers",
+    "url": "https://gailonline.com",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "USAJobs",
+    "url": "https://www.usajobs.gov",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "Canada Job Bank",
+    "url": "https://www.jobbank.gc.ca",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "Civil Service Jobs UK",
+    "url": "https://www.civilservicejobs.service.gov.uk",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "EU Careers",
+    "url": "https://eu-careers.europa.eu",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "UN Careers",
+    "url": "https://careers.un.org",
+    "category": "Government Jobs"
+  },
+  {
+    "name": "CareerJet",
+    "url": "https://www.careerjet.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Getwork",
+    "url": "https://getwork.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Nexxt",
+    "url": "https://www.nexxt.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Snagajob",
+    "url": "https://www.snagajob.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Jobillico",
+    "url": "https://www.jobillico.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Seek NZ",
+    "url": "https://www.seek.co.nz",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "GradConnection",
+    "url": "https://au.gradconnection.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "GradAustralia",
+    "url": "https://gradaustralia.com.au",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Milkround",
+    "url": "https://www.milkround.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "TargetJobs",
+    "url": "https://targetjobs.co.uk",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Gradcracker",
+    "url": "https://www.gradcracker.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Bright Network",
+    "url": "https://www.brightnetwork.co.uk",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "RateMyPlacement",
+    "url": "https://www.ratemyplacement.co.uk",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "StudentJob",
+    "url": "https://www.studentjob.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Graduateland",
+    "url": "https://graduateland.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "JobTeaser",
+    "url": "https://www.jobteaser.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "EURES",
+    "url": "https://eures.europa.eu",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "IrishJobs",
+    "url": "https://www.irishjobs.ie",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Jobs.ie",
+    "url": "https://www.jobs.ie",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "MyJobMag",
+    "url": "https://www.myjobmag.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Jobberman",
+    "url": "https://www.jobberman.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "BrighterMonday",
+    "url": "https://www.brightermonday.co.ke",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "PNet",
+    "url": "https://www.pnet.co.za",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Careers24",
+    "url": "https://www.careers24.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "JobMail",
+    "url": "https://www.jobmail.co.za",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Bayt",
+    "url": "https://www.bayt.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Naukrigulf",
+    "url": "https://www.naukrigulf.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "GulfTalent",
+    "url": "https://www.gulftalent.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Dubizzle Jobs",
+    "url": "https://dubizzle.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Laimoon Jobs",
+    "url": "https://www.laimoon.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Akhtaboot",
+    "url": "https://www.akhtaboot.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Wuzzuf",
+    "url": "https://wuzzuf.net",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Forasna",
+    "url": "https://forasna.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Bossjob",
+    "url": "https://bossjob.ph",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Kalibrr",
+    "url": "https://www.kalibrr.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "WorkAbroad",
+    "url": "https://www.workabroad.ph",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "JobKorea",
+    "url": "https://www.jobkorea.co.kr",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Saramin",
+    "url": "https://www.saramin.co.kr",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Wanted",
+    "url": "https://www.wanted.co.kr",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Mynavi",
+    "url": "https://job.mynavi.jp",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Rikunabi",
+    "url": "https://job.rikunabi.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "GaijinPot Jobs",
+    "url": "https://jobs.gaijinpot.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Daijob",
+    "url": "https://www.daijob.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "104 Job Bank",
+    "url": "https://www.104.com.tw",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "1111 Job Bank",
+    "url": "https://www.1111.com.tw",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "CakeResume",
+    "url": "https://www.cakeresume.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Yourator",
+    "url": "https://www.yourator.co",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Zhaopin",
+    "url": "https://www.zhaopin.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "51Job",
+    "url": "https://www.51job.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Liepin",
+    "url": "https://www.liepin.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Lagou",
+    "url": "https://www.lagou.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Computrabajo",
+    "url": "https://www.computrabajo.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Bumeran",
+    "url": "https://www.bumeran.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "InfoJobs",
+    "url": "https://www.infojobs.net",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Infoempleo",
+    "url": "https://www.infoempleo.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Tecnoempleo",
+    "url": "https://www.tecnoempleo.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Catho",
+    "url": "https://www.catho.com.br",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Vagas",
+    "url": "https://www.vagas.com.br",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "Trabajando",
+    "url": "https://www.trabajando.com",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "OCCMundial",
+    "url": "https://www.occ.com.mx",
+    "category": "Global Job Board"
+  },
+  {
+    "name": "500 Global Jobs",
+    "url": "https://500.co",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Techstars Jobs",
+    "url": "https://www.techstars.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Antler Careers Network",
+    "url": "https://www.antler.co",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Entrepreneur First Jobs",
+    "url": "https://www.joinef.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Plug and Play Talent",
+    "url": "https://www.plugandplaytechcenter.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Alchemist Accelerator",
+    "url": "https://www.alchemistaccelerator.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "MassChallenge Jobs",
+    "url": "https://masschallenge.org",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Seedcamp Talent",
+    "url": "https://seedcamp.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Station F Jobs",
+    "url": "https://stationf.co",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "StartX Careers",
+    "url": "https://startx.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Founder Institute Jobs",
+    "url": "https://fi.co",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "SOSV Careers",
+    "url": "https://sosv.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Startupbootcamp Jobs",
+    "url": "https://www.startupbootcamp.org",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "ERA Talent Network",
+    "url": "https://eranyc.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Dreamit Ventures Jobs",
+    "url": "https://www.dreamit.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Village Capital Careers",
+    "url": "https://vilcap.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "LaunchVic Jobs",
+    "url": "https://launchvic.org",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Startup Chile Jobs",
+    "url": "https://startupchile.org",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Innovate UK Talent",
+    "url": "https://iuk.ktn-uk.org",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Creative Destruction Lab Careers",
+    "url": "https://creativedestructionlab.com",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "OpenAI Careers",
+    "url": "https://openai.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Anthropic Careers",
+    "url": "https://www.anthropic.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Perplexity Careers",
+    "url": "https://www.perplexity.ai/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Mistral AI Careers",
+    "url": "https://mistral.ai/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Cohere Careers",
+    "url": "https://cohere.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Scale AI Careers",
+    "url": "https://scale.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Hugging Face Jobs",
+    "url": "https://huggingface.co/jobs",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Runway Careers",
+    "url": "https://runwayml.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Character AI Careers",
+    "url": "https://character.ai/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "ElevenLabs Careers",
+    "url": "https://elevenlabs.io/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Replit Careers",
+    "url": "https://replit.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Vercel Careers",
+    "url": "https://vercel.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Supabase Careers",
+    "url": "https://supabase.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "PlanetScale Careers",
+    "url": "https://planetscale.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Render Careers",
+    "url": "https://render.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Railway Careers",
+    "url": "https://railway.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Fly.io Careers",
+    "url": "https://fly.io/jobs",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Clerk Careers",
+    "url": "https://clerk.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "PostHog Careers",
+    "url": "https://posthog.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Plausible Careers",
+    "url": "https://plausible.io/jobs",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Snyk Careers",
+    "url": "https://snyk.io/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "HashiCorp Careers",
+    "url": "https://www.hashicorp.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "GitLab Careers",
+    "url": "https://about.gitlab.com/jobs",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Automattic Careers",
+    "url": "https://automattic.com/work-with-us",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Canonical Careers",
+    "url": "https://canonical.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Elastic Careers",
+    "url": "https://www.elastic.co/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Grafana Labs Careers",
+    "url": "https://grafana.com/about/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "DigitalOcean Careers",
+    "url": "https://www.digitalocean.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Airtable Careers",
+    "url": "https://www.airtable.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Notion Careers",
+    "url": "https://www.notion.so/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Figma Careers",
+    "url": "https://www.figma.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Canva Careers",
+    "url": "https://www.canva.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Brex Careers",
+    "url": "https://www.brex.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Ramp Careers",
+    "url": "https://ramp.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Mercury Careers",
+    "url": "https://mercury.com/jobs",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Plaid Careers",
+    "url": "https://plaid.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Deel Careers",
+    "url": "https://www.deel.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Remote Careers",
+    "url": "https://remote.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Multiplier Careers",
+    "url": "https://www.usemultiplier.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "Rippling Careers",
+    "url": "https://www.rippling.com/careers",
+    "category": "Accelerators & Tech Companies"
+  },
+  {
+    "name": "AIJobs.net",
+    "url": "https://aijobs.net",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "DataJobs",
+    "url": "https://datajobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "DataElixir Jobs",
+    "url": "https://jobs.dataelixir.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "KDnuggets Jobs",
+    "url": "https://www.kdnuggets.com/jobs",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "MachineLearningJobs",
+    "url": "https://machinelearningjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Data Science Central Jobs",
+    "url": "https://www.datasciencecentral.com/jobs",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Deep Learning Jobs",
+    "url": "https://deeplearningjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "MLConf Jobs",
+    "url": "https://mlconf.com/jobs",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Analytics Vidhya Jobs",
+    "url": "https://www.analyticsvidhya.com/jobs",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Towards AI Jobs",
+    "url": "https://jobs.towardsai.net",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "CyberSecJobs",
+    "url": "https://cybersecjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "CyberSecurityJobsite",
+    "url": "https://www.cybersecurityjobsite.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "ClearedJobs",
+    "url": "https://clearedjobs.net",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Infosec Jobs",
+    "url": "https://infosec-jobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "SecurityClearedJobs",
+    "url": "https://www.securityclearedjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "DevOpsJobs",
+    "url": "https://devops-jobs.net",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "DevOps Engineer Jobs",
+    "url": "https://devopsengineerjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Cloud Careers",
+    "url": "https://www.cloudcareers.net",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Cloud Native Jobs",
+    "url": "https://cloudnativejobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Kubernetes Jobs",
+    "url": "https://kubernetesjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "MLOps Jobs",
+    "url": "https://mlopsjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "AI Research Jobs",
+    "url": "https://airesearchjobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Big Data Jobs",
+    "url": "https://bigdatajobs.com",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Dataaxy Jobs",
+    "url": "https://dataaxy.com/jobs",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Women in Data Jobs",
+    "url": "https://womenindata.org/jobs",
+    "category": "Tech Jobs"
+  },
+  {
+    "name": "Web3 Career",
+    "url": "https://web3.career",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "CryptoJobsList",
+    "url": "https://cryptojobslist.com",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Crypto Careers",
+    "url": "https://cryptocareers.com",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Remote3",
+    "url": "https://www.remote3.co",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "UseWeb3 Jobs",
+    "url": "https://useweb3.xyz/jobs",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "LaborX",
+    "url": "https://laborx.com",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Ethlance",
+    "url": "https://ethlance.com",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Blockchain Headhunter",
+    "url": "https://blockchainheadhunter.com",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "CryptoJobs",
+    "url": "https://crypto.jobs",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Cryptocurrency Jobs",
+    "url": "https://cryptocurrencyjobs.co",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Bankless Jobs",
+    "url": "https://bankless.pallet.com/jobs",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Solana Jobs",
+    "url": "https://jobs.solana.com",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Polygon Careers",
+    "url": "https://polygon.technology/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Chainlink Labs Careers",
+    "url": "https://chainlinklabs.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "ConsenSys Careers",
+    "url": "https://consensys.io/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Alchemy Careers",
+    "url": "https://www.alchemy.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "QuickNode Careers",
+    "url": "https://www.quicknode.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Aptos Careers",
+    "url": "https://aptoslabs.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Mysten Labs Careers",
+    "url": "https://mystenlabs.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Offchain Labs Careers",
+    "url": "https://offchainlabs.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Immutable Careers",
+    "url": "https://www.immutable.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Coinbase Careers",
+    "url": "https://www.coinbase.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Kraken Careers",
+    "url": "https://www.kraken.com/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Binance Careers",
+    "url": "https://www.binance.com/en/careers",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "OKX Careers",
+    "url": "https://www.okx.com/join-us",
+    "category": "Web3 & Crypto Jobs"
+  },
+  {
+    "name": "Mind the Product Jobs",
+    "url": "https://www.mindtheproduct.com/jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Product School Jobs",
+    "url": "https://productschool.com/jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "ProductHired",
+    "url": "https://producthired.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Product Management Exercises Jobs",
+    "url": "https://www.productmanagementexercises.com/jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Roman Jobs",
+    "url": "https://jobs.roman.co",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "GrowthHackers Jobs",
+    "url": "https://growthhackers.com/jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Demand Curve Jobs",
+    "url": "https://jobs.demandcurve.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Superpath Jobs",
+    "url": "https://jobs.superpath.co",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "MarketingJobs",
+    "url": "https://www.marketingjobs.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "AMA Career Center",
+    "url": "https://jobs.ama.org",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Content Marketing Institute Jobs",
+    "url": "https://contentmarketinginstitute.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "GrowthTalent",
+    "url": "https://growthtalentnetwork.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Product Coalition Jobs",
+    "url": "https://productcoalition.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "UX Jobs Board",
+    "url": "https://uxjobsboard.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "UX Design Jobs",
+    "url": "https://uxdesignjobs.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "UX Hiring",
+    "url": "https://uxhiring.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Design Jobs Board",
+    "url": "https://designjobsboard.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Creativepool Jobs",
+    "url": "https://creativepool.com/jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Coroflot Jobs",
+    "url": "https://www.coroflot.com/design-jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Mandy",
+    "url": "https://www.mandy.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "ProductionHUB",
+    "url": "https://www.productionhub.com/jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "AIGA Design Jobs",
+    "url": "https://designjobs.aiga.org",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "Working Not Working",
+    "url": "https://workingnotworking.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "The Dots Jobs",
+    "url": "https://the-dots.com/jobs",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "AngelHack Talent",
+    "url": "https://angelhack.com",
+    "category": "Product & Design Jobs"
+  },
+  {
+    "name": "G2 Careers",
+    "url": "https://careers.g2.com",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Zapier Careers",
+    "url": "https://zapier.com/jobs",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Asana Careers",
+    "url": "https://asana.com/jobs",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Monday.com Careers",
+    "url": "https://monday.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "ClickUp Careers",
+    "url": "https://clickup.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Intercom Careers",
+    "url": "https://www.intercom.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Freshworks Careers",
+    "url": "https://www.freshworks.com/company/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Zoho Careers",
+    "url": "https://careers.zohocorp.com",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Pipedrive Careers",
+    "url": "https://www.pipedrive.com/en/jobs",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Miro Careers",
+    "url": "https://miro.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Loom Careers",
+    "url": "https://www.loom.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Typeform Careers",
+    "url": "https://www.typeform.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Calendly Careers",
+    "url": "https://careers.calendly.com",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Buffer Careers",
+    "url": "https://buffer.com/journey",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "ConvertKit Careers",
+    "url": "https://convertkit.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Ahrefs Careers",
+    "url": "https://ahrefs.com/jobs",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Semrush Careers",
+    "url": "https://www.semrush.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Hotjar Careers",
+    "url": "https://careers.hotjar.com",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Coda Careers",
+    "url": "https://coda.io/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Lucid Software Careers",
+    "url": "https://www.lucid.co/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "SurveyMonkey Careers",
+    "url": "https://www.surveymonkey.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "SendGrid Careers",
+    "url": "https://sendgrid.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Mailchimp Careers",
+    "url": "https://mailchimp.com/careers",
+    "category": "SaaS & Product-Led Companies"
+  },
+  {
+    "name": "Glassdoor",
+    "url": "https://www.glassdoor.com",
+    "category": "job/internship"
+  },
+  {
+    "name": "Cognizant Careers",
+    "url": "https://careers.cognizant.com/global/en",
+    "category": "MNC Career Portal"
+  }
+]

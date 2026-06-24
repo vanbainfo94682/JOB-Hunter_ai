@@ -711,11 +711,28 @@ export async function runScraperJob(userId?: string, force: boolean = false) {
   try {
     let pReq = supabase.from('user_profiles').select('*');
     if (userId) pReq = pReq.eq('user_id', userId);
+    else {
+      pReq = pReq.eq('id', userId);
+    }
     const { data: pData } = await pReq.maybeSingle();
-    const profile = pData ? { ...pData, fullName: pData.full_name, skills: pData.skills, rawResumeText: pData.raw_resume_text, targetTitles: pData.target_titles } : null;
+    let profile = pData ? { ...pData, fullName: pData.full_name, skills: pData.skills, rawResumeText: pData.raw_resume_text, targetTitles: pData.target_titles } : null;
+
+    // If no profile found by user_id, try looking up via app_users table (fallback)
+    if (!profile && userId) {
+      try {
+        const { data: appUser } = await supabase.from('app_users').select('email').eq('id', userId).maybeSingle();
+        if (appUser?.email) {
+          const { data: emailProfile } = await supabase.from('user_profiles').select('*').eq('email', appUser.email).maybeSingle();
+          if (emailProfile) {
+            profile = { ...emailProfile, fullName: emailProfile.full_name, skills: emailProfile.skills, rawResumeText: emailProfile.raw_resume_text, targetTitles: emailProfile.target_titles };
+          }
+        }
+      } catch (e) {}
+    }
     
     if (!profile) {
-      await logSystem('WARNING', 'Scraper aborted: No user profile found. Please upload your resume first.');
+      const label = userId ? userId : 'undefined';
+      await logSystem('WARNING', `[MasterJobScraper] aborted: No user profile found for user ${label}. Upload a resume first, or run manual scrape from dashboard.`);
       return;
     }
 

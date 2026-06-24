@@ -4,17 +4,62 @@ import { GuaranteeEngine } from './guaranteeEngine';
 
 let isLoopRunning = false;
 let nextScrapeTime = 0;
+let lastCleanupTime = 0;
 
-/**
- * Coordinator loop representing the 24/7 background worker.
- * Runs periodically to sweep and process active candidate tasks.
- */
+export async function closeStaleJobs(userId: string): Promise<number> {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: oldJobs, error } = await supabase
+    .from('jobs')
+    .select('id, status, platform, url')
+    .eq('user_id', userId)
+    .neq('status', 'APPLIED')
+    .neq('status', 'FAILED')
+    .neq('status', 'INTERVIEW')
+    .neq('status', 'OFFER')
+    .lt('created_at', thirtyDaysAgo.toISOString());
+
+  if (error) {
+    await logSystem('ERROR', `[Cleanup] Failed to fetch stale jobs: ${error.message}`);
+    return 0;
+  }
+
+  if (!oldJobs || oldJobs.length === 0) return 0;
+
+  const ids = oldJobs.map(j => j.id);
+  const now = new Date().toISOString();
+
+  const { error: updateError } = await supabase
+    .from('jobs')
+    .update({ status: 'CLOSED', logs: supabase.raw(`COALESCE(logs, '[]') || '[{"type":"SYSTEM","message":"Job marked as CLOSED - no longer active","timestamp":"${now}"}]'`) })
+    .in('id', ids);
+
+  if (updateError) {
+    await logSystem('ERROR', `[Cleanup] Failed to update stale jobs: ${updateError.message}`);
+    return 0;
+  }
+
+  await logSystem('INFO', `[Cleanup] Marked ${ids.length} stale jobs as CLOSED for user ${userId}`);
+  return ids.length;
+}
+
 export async function runAgentCycle() {
   if (isLoopRunning) return;
   isLoopRunning = true;
 
   try {
     const now = Date.now();
+
+    // 0. Cleanup stale jobs once per day
+    if (now >= lastCleanupTime + 24 * 60 * 60 * 1000) {
+      lastCleanupTime = now;
+      if (activeSettings && activeSettings.length > 0) {
+        for (const setting of activeSettings) {
+          await closeStaleJobs(setting.user_id);
+        }
+      }
+    }
 
     // 1. Scraping & Application cycle (runs once every 60 minutes)
     if (now >= nextScrapeTime) {

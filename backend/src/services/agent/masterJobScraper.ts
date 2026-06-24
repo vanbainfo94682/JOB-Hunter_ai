@@ -46,7 +46,11 @@ export class MasterJobScraper {
     const pReq = supabase.from('user_profiles').select('*').eq('user_id', this.userId);
     const { data: pData } = await pReq.maybeSingle();
     if (!pData) {
-      await logSystem('WARNING', `MasterJobScraper aborted: No user profile found for user ${this.userId}.`);
+      if (!this.userId) {
+        await logSystem('ERROR', `[MasterJobScraper] aborted: Constructor called without userId. Pass user ID from the authenticated session.`);
+      } else {
+        await logSystem('WARNING', `[MasterJobScraper] aborted: No user profile found for user ${this.userId}. Upload a resume first.`);
+      }
       return false;
     }
     this.profile = {
@@ -278,6 +282,13 @@ export class MasterJobScraper {
       await logSystem('WARNING', `[MasterScraper] Custom website list scrape failed: ${e.message}`);
     }
 
+    try {
+      const boardJobs = await this.scrapeAllJobBoards(searchTerms);
+      allJobs.push(...boardJobs);
+    } catch (e: any) {
+      await logSystem('WARNING', `[MasterScraper] Bulk job boards scrape failed: ${e.message}`);
+    }
+
     return allJobs;
   }
 
@@ -380,35 +391,41 @@ export class MasterJobScraper {
     for (const term of searchTerms) {
       if (this.isCancelled) break;
 
-      const query = `site:linkedin.com/jobs/view/ "${term}" remote OR hybrid`;
-      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      const queries = [
+        `site:linkedin.com/jobs/view/ "${term}" remote OR hybrid`,
+        `site:linkedin.com/jobs "${term}" hiring`
+      ];
 
-      try {
-        await logSystem('INFO', `[LinkedIn X-Ray] Querying DuckDuckGo for: ${query}`);
-        const html = await this.fetchWithPythonFallback(searchUrl);
-        const $ = cheerio.load(html);
-        
-        $('.result__url').each((_, el) => {
-          const rawUrl = $(el).attr('href');
-          if (rawUrl) {
-            const cleanUrl = this.cleanDuckDuckGoUrl(rawUrl);
-            if (cleanUrl.includes('linkedin.com/jobs/view/')) {
-              const match = cleanUrl.match(/linkedin\.com\/jobs\/view\/\d+/);
-              if (match) {
-                jobUrls.add('https://' + match[0]);
+      for (const query of queries) {
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
+        try {
+          await logSystem('INFO', `[LinkedIn] Querying DuckDuckGo for: ${query}`);
+          const html = await this.fetchWithPythonFallback(searchUrl);
+          const $ = cheerio.load(html);
+          
+          $('.result__url').each((_, el) => {
+            const rawUrl = $(el).attr('href');
+            if (rawUrl) {
+              const cleanUrl = this.cleanDuckDuckGoUrl(rawUrl);
+              if (cleanUrl.includes('linkedin.com/jobs/view/') || cleanUrl.includes('linkedin.com/jobs/')) {
+                const match = cleanUrl.match(/linkedin\.com\/jobs\/view\/\d+/);
+                if (match) {
+                  jobUrls.add('https://' + match[0]);
+                }
               }
             }
-          }
-        });
-      } catch (err: any) {
-        await logSystem('WARNING', `[LinkedIn X-Ray] DuckDuckGo crawl failed: ${err.message}`);
-      }
+          });
+        } catch (err: any) {
+          await logSystem('WARNING', `[LinkedIn] DuckDuckGo crawl failed: ${err.message}`);
+        }
 
-      await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+      }
     }
 
     const urlList = Array.from(jobUrls).slice(0, 15);
-    await logSystem('INFO', `[LinkedIn X-Ray] Found ${urlList.length} candidate LinkedIn job listings. Executing stealth details crawl...`);
+    await logSystem('INFO', `[LinkedIn] Found ${urlList.length} candidate LinkedIn job listings. Executing stealth details crawl...`);
 
     for (const url of urlList) {
       if (this.isCancelled) break;
@@ -945,5 +962,83 @@ export class MasterJobScraper {
       }
     } catch (e) {}
     return allJobs;
+  }
+
+  /**
+   * Scrapes all job boards from the comprehensive jobBoards.json config file.
+   * Uses the Python crawler bridge for generic website scraping.
+   */
+  private async scrapeAllJobBoards(searchTerms: string[]): Promise<RawScrapedJob[]> {
+    const jobs: RawScrapedJob[] = [];
+    const isDist = __dirname.includes('dist');
+    const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : __dirname;
+    const boardsPath = path.join(basePath, 'jobBoards.json');
+    
+    if (!fs.existsSync(boardsPath)) {
+      await logSystem('WARNING', '[MasterScraper] jobBoards.json not found. Skipping bulk board scraping.');
+      return jobs;
+    }
+
+    let boards: any[];
+    try {
+      const raw = fs.readFileSync(boardsPath, 'utf8');
+      boards = JSON.parse(raw);
+    } catch (e) {
+      await logSystem('WARNING', `[MasterScraper] Failed to parse jobBoards.json: ${(e as Error).message}`);
+      return jobs;
+    }
+
+    // Filter boards that match any search term or category
+    const relevantBoards = boards.filter((board: any) => {
+      const termBlob = `${board.name} ${board.category} ${board.url}`.toLowerCase();
+      return searchTerms.some(term => termBlob.includes(term.toLowerCase())) || searchTerms.length === 0;
+    });
+
+    // Deduplicate by URL
+    const seen = new Set<string>();
+    const uniqueBoards = relevantBoards.filter((b: any) => {
+      if (!b.url || seen.has(b.url)) return false;
+      seen.add(b.url);
+      return true;
+    });
+
+    await logSystem('INFO', `[MasterScraper] Bulk scraping ${uniqueBoards.length} job boards from jobBoards.json...`);
+
+    for (const board of uniqueBoards) {
+      if (this.isCancelled) break;
+      if (!board.url || board.url.trim() === '') continue;
+
+      try {
+        const jobsJsonStr = await new Promise<string>((resolve, reject) => {
+          const isDist = __dirname.includes('dist');
+          const basePath = isDist ? path.join(__dirname, '../../../src/services/agent') : __dirname;
+          const scriptPath = path.join(basePath, 'python_job_scraper.py');
+          const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+          execFile(pythonCmd, [scriptPath, board.url], { maxBuffer: 10 * 1024 * 1024, timeout: 45000 }, (error, stdout) => {
+            if (error) reject(error);
+            else resolve(stdout);
+          });
+        });
+
+        const parsed = JSON.parse(jobsJsonStr);
+        if (parsed.success && Array.isArray(parsed.jobs)) {
+          const mapped = parsed.jobs.map((j: any) => ({
+            ...j,
+            platform: board.name,
+            company: j.company || board.name.split(' ')[0] || 'Unknown',
+            isRemote: j.isRemote !== false,
+            workType: j.workType || 'REMOTE',
+          }));
+          jobs.push(...mapped);
+        }
+      } catch (e) {
+        // Silently skip boards that fail — they may require JS rendering
+      }
+
+      // Small delay between boards to avoid rate limits
+      await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
+    }
+
+    return jobs;
   }
 }

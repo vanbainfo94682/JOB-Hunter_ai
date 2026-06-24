@@ -154,13 +154,27 @@ async function requirePremium(req: any, res: any, next: any) {
 // ENDPOINTS
 // ─────────────────────────────────────────────────────────────────
 
-app.get('/api/agent/stream', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-  sseClients.push(res);
-  req.on('close', () => { sseClients = sseClients.filter(c => c !== res); });
+app.get('/api/agent/stream', async (req, res) => {
+  try {
+    const token = (req.query.token as string) || (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+    sseClients.push(res);
+    req.on('close', () => { sseClients = sseClients.filter(c => c !== res); });
+  } catch (err) {
+    res.status(401).json({ error: 'Auth failed' });
+  }
 });
 
 app.get('/api/stats', async (req, res) => {
@@ -313,7 +327,34 @@ app.get('/api/auth/google/callback', async (req, res) => {
       await supabase.from('agent_settings').insert({ user_id: userId, cookies_json: newJson });
     }
 
-    res.send(`<script>window.opener ? (window.opener.postMessage("oauth_success", "*"), window.close()) : window.location.href = "${req.headers.origin || 'http://localhost:3000'}";</script>`);
+    const frontendOrigin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html>
+<html>
+<head><title>Google Connected</title></head>
+<body style="font-family:system-ui,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0a0a0a;color:#fff;text-align:center">
+  <div>
+    <h1 style="color:#4caf50">✓ Google Account Connected</h1>
+    <p style="color:#aaa">The AI can now send emails from your account.</p>
+    <button onclick="tryClose()" style="background:#4caf50;color:#000;border:none;padding:12px 24px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:bold">Return to Dashboard</button>
+  </div>
+  <script>
+    function tryClose() {
+      if (window.opener && !window.opener.closed) {
+        try { window.opener.postMessage("oauth_success", "*"); } catch(e){}
+        window.close();
+        setTimeout(function(){ window.location.href = "${frontendOrigin}"; }, 300);
+      } else {
+        window.location.href = "${frontendOrigin}";
+      }
+    }
+    if (window.opener && !window.opener.closed) {
+      try { window.opener.postMessage("oauth_success", "*"); } catch(e){}
+      setTimeout(tryClose, 400);
+    }
+  </script>
+</body>
+</html>`);
   } catch (err: any) {
     console.error('OAuth Exchange Error:', err.response?.data || err.message);
     res.status(500).send('Failed to exchange Google token.');
@@ -347,8 +388,8 @@ app.get('/api/auth/google/status', requireAuth, async (req, res) => {
     }
 
     const { data: user } = await supabase.from('app_users').select('email').eq('id', userId).single();
-    const { data: profile } = await supabase.from('user_profiles').select('professional_email').eq('user_id', userId).maybeSingle();
-    const senderEmail = profile?.professional_email || user?.email || null;
+    const { data: profile } = await supabase.from('user_profiles').select('professional_email, email').eq('user_id', userId).maybeSingle();
+    const senderEmail = profile?.professional_email || profile?.email || user?.email || null;
 
     res.json({ isConnected, senderEmail });
   } catch (error: any) {

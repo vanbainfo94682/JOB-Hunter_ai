@@ -25,19 +25,27 @@ export class GmailLimitBypass {
    * Dispatches email via Gmail API, SMTP or falls back.
    */
   async sendEmail(to: string, subject: string, body: string, attachmentPath?: string): Promise<boolean> {
-    const { data: settings } = await supabase.from('agent_settings').select('gmail_cookies').eq('user_id', this.userId).maybeSingle();
-    if (!settings || !settings.gmail_cookies) {
-      await logSystem('WARNING', `GmailBypass: No credentials/cookies configured in gmail_cookies for user ${this.userId}`);
+    // Try cookies_json.gmailCookies first (where OAuth callback stores tokens), then fall back to gmail_cookies column
+    const { data: settings } = await supabase.from('agent_settings').select('cookies_json,gmail_cookies').eq('user_id', this.userId).maybeSingle();
+    let gmailRaw: string | null = null;
+    if (settings?.cookies_json) {
+      try {
+        const dec = decryptString(settings.cookies_json);
+        const parsed = JSON.parse(dec);
+        if (parsed.gmailCookies) gmailRaw = parsed.gmailCookies;
+      } catch (e) {}
+    }
+    if (!gmailRaw && settings?.gmail_cookies) gmailRaw = settings.gmail_cookies;
+    if (!gmailRaw) {
+      await logSystem('WARNING', `GmailBypass: No credentials/cookies configured for user ${this.userId}`);
       return false;
     }
-
-    const decryptedStr = this.decryptIfEncrypted(settings.gmail_cookies);
     let credentials: any = {};
     try {
+      const decryptedStr = this.decryptIfEncrypted(gmailRaw);
       credentials = JSON.parse(decryptedStr);
     } catch (e) {
-      // If it's not a JSON string, it might just be raw cookies string or access token
-      credentials = { rawCookies: decryptedStr };
+      credentials = { rawCookies: gmailRaw };
     }
 
     // Option 1: Gmail API (OAuth token)
