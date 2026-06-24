@@ -41,8 +41,10 @@ export class GuaranteeEngine {
     await logSystem('INFO', `[GuaranteeEngine] Initiating ensureDailyTarget loop for user ${this.userId} (Target: ${this.DAILY_TARGET})`);
     
     // Force isActive=true so downstream scrapers/appliers know autopilot is running
-    await supabase.from('agent_settings').update({ is_active: true }).eq('user_id', this.userId).catch(() => {});
-    
+    try {
+      await supabase.from('agent_settings').update({ is_active: true }).eq('user_id', this.userId);
+    } catch { /* ignore */ }
+
     let applied = await this.getTodayApplicationCount();
     await logSystem('INFO', `[GuaranteeEngine] Current successful applications count today: ${applied}`);
 
